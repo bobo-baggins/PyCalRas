@@ -1,0 +1,13 @@
+name: pyCal
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - numpy
+  - pandas
+  - seaborn
+  - matplotlib
+  - scipy
+  - gdal
+  - adjustText
