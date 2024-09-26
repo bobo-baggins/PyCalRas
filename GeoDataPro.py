@@ -1,4 +1,5 @@
 from osgeo import gdal
+import geopandas as gpd
 
 
 def process_raster(raster_file):
@@ -33,3 +34,21 @@ def geo_to_pixel(geo_x, geo_y, geotransform):
     return pixel_x, pixel_y
 
 # Add more functions as needed
+
+def read_centerline_shapefile(shapefile_path):
+    """
+    Read a centerline shapefile and return a GeoDataFrame.
+
+    Args:
+    shapefile_path (str): Path to the shapefile.
+
+    Returns:
+    gpd.GeoDataFrame: GeoDataFrame containing the centerline data.
+    """
+    try:
+        gdf = gpd.read_file(shapefile_path)
+        return gdf
+    except Exception as e:
+        print(f"Error reading shapefile: {e}")
+        return None
+

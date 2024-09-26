@@ -41,7 +41,7 @@ def create_calibration_plot(cal_pts_df, l_bounds=-0.5, u_bounds=0.5, output_file
             text = ax.annotate(label_text,
                           xy=(cal_pts_df['E'][i], cal_pts_df['N'][i]),
                           xytext=(cal_pts_df['E'][i], cal_pts_df['N'][i]),
-                          fontsize=12,
+                          fontsize=10,
                           color='black',
                           arrowprops=dict(arrowstyle='->', color='black', shrinkA=1),
                           fontfamily='Arial')
@@ -50,11 +50,11 @@ def create_calibration_plot(cal_pts_df, l_bounds=-0.5, u_bounds=0.5, output_file
     # Adjust text positions
     adjust_text(texts, 
                 only_move={'points': 'xy', 'text': 'xy'},
-                max_iterations=300)
+                max_iterations=500)
 
     # Add legend
     ax.legend(title='Categories', 
-              loc='upper right', 
+              loc='lower left', 
               fontsize='medium', 
               title_fontsize='13', 
               frameon=True, 
@@ -62,14 +62,15 @@ def create_calibration_plot(cal_pts_df, l_bounds=-0.5, u_bounds=0.5, output_file
               edgecolor='black')
 
     # Add title and subtitles
-    plt.title('Supply 80p5cfs: WSE Calibration')
-    calculated_value = np.average(cal_pts_df['Difference'])
-    RMSE = np.sqrt(np.mean(cal_pts_df['Difference']**2))
+    plt.title('Supply_6cfs_WSE: Calibration Check')
+    #calculated_value = np.average(cal_pts_df['Difference'])
+    Avg_Diff = cal_pts_df['Difference'].mean()
+    RMSE = np.sqrt(np.mean(cal_pts_df['Difference_Squared']))
     p_value = cal_pts_df['Z'].corr(cal_pts_df['Sampled_Value'])
 
     plt.text(0.5, 0.04, f"Ok = + or - {u_bounds} ft.", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
-    plt.text(0.5, 1.06, f"Average Difference = {calculated_value:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
-    plt.text(0.5, 1.08, f"RMSE = {RMSE:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+    plt.text(0.5, 1.04, f"Average Difference = {Avg_Diff:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+    plt.text(0.5, 1.07, f"RMSE = {RMSE:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
     plt.text(0.5, 1.10, f"Pearson = {p_value:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
 
     # Set labels
@@ -82,3 +83,50 @@ def create_calibration_plot(cal_pts_df, l_bounds=-0.5, u_bounds=0.5, output_file
 
     print(f"Plot saved to {output_file}")
     print(f"Number of NaN values in Difference: {cal_pts_df['Difference'].isna().sum()}")
+
+def plot_wse_comparison(sampled_points_gdf, output_file):
+    """
+    Plot a comparison of measured WSE vs. model WSE.
+
+    Args:
+    sampled_points_gdf (gpd.GeoDataFrame): GeoDataFrame containing stationing and WSE data.
+    model_wse_col (str): Name of the column containing model WSE values.
+    output_file (str): Path to save the output PNG file.
+
+    Returns:
+    None
+    """
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Plot measured WSE (Z values)
+    ax.scatter(sampled_points_gdf['Stationing'], sampled_points_gdf['Z'], 
+                color='blue', label='Surveyed Depth', marker='o', s=10)
+    
+    # Plot sampled values
+    ax.scatter(sampled_points_gdf['Stationing'], sampled_points_gdf['Sampled_Value'], 
+                color='green', label='Model Results', marker='s', s=10)
+
+   # Calculate Stats
+    Avg_Diff = sampled_points_gdf['Difference'].mean() 
+    RMSE = np.sqrt(np.mean(sampled_points_gdf['Difference_Squared']))
+    p_value = sampled_points_gdf['Z'].corr(sampled_points_gdf['Sampled_Value'])
+
+    # Add Subtitles
+    ax.text(0.5, 1.10, f"Average Difference = {Avg_Diff:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+    ax.text(0.5, 1.04, f"RMSE = {RMSE:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+    ax.text(0.5, 1.07, f"Pearson = {p_value:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+
+    ax.set_title('Velocity Comparison: Measured vs. Model')
+    ax.set_xlabel('Stationing (ft.)')
+    ax.set_ylabel('Velocity (ft/s)')
+    ax.legend()
+    ax.grid()
+    
+    # Reverse the x-axis
+    ax.invert_xaxis()
+    
+    # Save the plot as a PNG file
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+
+    print(f"WSE comparison plot saved to {output_file}")
