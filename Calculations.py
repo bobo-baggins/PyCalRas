@@ -50,19 +50,24 @@ def sample_point(raster_data, geotransform, points_df, x_col='X', y_col='Y', z_c
 
     def find_closest_valid_pixel(pixel_x, pixel_y, raster_data):
         # Define the search range (you can adjust this if needed)
-        search_range = 100  # Search 1 pixel in all directions
         height, width = raster_data.shape
+        search_range = int(0.001 * np.sqrt(float(height)**2 + float(width)**2))  # Start with a small search range
+        print(search_range)
 
-        for dy in range(-search_range, search_range + 1):
-            for dx in range(-search_range, search_range + 1):
-                new_x = pixel_x + dx
-                new_y = pixel_y + dy
-                
-                # Check if the new coordinates are within bounds
-                if 0 <= new_x < width and 0 <= new_y < height:
-                    if raster_data[new_y, new_x] != -9999.0:  # Check for valid value
-                        return new_x, new_y  # Return the first valid pixel found
+        while search_range <= 101:  # Increase the search range in increments of 10 pixels
+            for dy in range(-search_range, search_range + 1):
+                for dx in range(-search_range, search_range + 1):
+                    new_x = pixel_x + dx
+                    new_y = pixel_y + dy
+                    
+                    # Check if the new coordinates are within bounds
+                    if 0 <= new_x < width and 0 <= new_y < height:
+                        if raster_data[new_y, new_x] != -9999.0:  # Check for valid value
+                            print('Found valid pixel at ', new_x, new_y)
+                            print('Search range is ', search_range)
+                            return new_x, new_y  # Return the first valid pixel found
 
+            search_range += search_range  # Increase the search range
         return pixel_x, pixel_y  # Return original if no valid pixel is found
 
     # Apply the sampling function to each row

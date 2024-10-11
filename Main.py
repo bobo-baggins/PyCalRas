@@ -10,7 +10,10 @@ raster_data, geotransform, projection = geo.process_raster(raster_file)
 
 # Load calibration points
 input_PNEZ = 'Inputs/Calibration_Points/WSE_Two_Rivers_PNEZD.csv'
-calibration_points = pd.read_csv(input_PNEZ)
+calibration_points = pd.read_csv(input_PNEZ, header=None)
+if calibration_points.iloc[0].str.isalpha().all():
+    calibration_points.columns = ['P', 'N', 'E', 'Z', 'D']
+print(calibration_points.head())
 
 # Generate name of output file based on input file name
 output_file = 'Outputs/' + input_PNEZ.split('/')[-1].replace('.csv', '')
