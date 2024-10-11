@@ -2,54 +2,79 @@ import pandas as pd
 import numpy as np
 import Calculations as calc
 import GeoDataPro as geo
-import Output as out    
+import Output as out
+import os
+import sys
 
-# Load raster data
-raster_file = 'Inputs/Rasters/Design_Surface.tif'
-raster_data, geotransform, projection = geo.process_raster(raster_file)
 
-# Load calibration points
-input_PNEZ = 'Inputs/Sample_Points/USOLGB.csv'
-calibration_points = pd.read_csv(input_PNEZ, header=None)
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
 
-# Debugging: Print the first row to check its content
-print("First Row of Calibration Points:", calibration_points.iloc[0])
+    return os.path.join(base_path, relative_path)
 
-if not calibration_points.iloc[0].str.isalpha().all():
+def main():
+    # Load calibration points
+    sample_points_directory = resource_path('Inputs/Sample_Points')
+    csv_files = [f for f in os.listdir(sample_points_directory) if f.endswith('.csv')]
+    if not csv_files:
+        print("No .csv files found in the directory.")
+        return
+    input_PNEZ = os.path.join(sample_points_directory, csv_files[0])
+    calibration_points = pd.read_csv(input_PNEZ)
+
+    # Ensure columns are set correctly
     calibration_points.columns = ['P', 'N', 'E', 'Z', 'D']
-print(calibration_points.head())
 
-# Generate name of output file based on input file name
-output_file = 'Outputs/' + input_PNEZ.split('/')[-1].replace('.csv', '')
-print(output_file)
+    # Load centerline shapefile with error-checking
+    centerline_shapefile_path = resource_path('Inputs/Alignment')
+    shape_files = [f for f in os.listdir(centerline_shapefile_path) if f.endswith('.shp')]
+    if not shape_files:
+        print("No .shp files found in the directory.")
+        return
+    centerline_gdf = geo.read_centerline_shapefile(os.path.join(centerline_shapefile_path, shape_files[0]))
 
-# Load centerline shapefile
-centerline_shapefile = 'Inputs/Alignment/Clackamas Calibration Long Profile.shp'
-centerline_gdf = geo.read_centerline_shapefile(centerline_shapefile)
+    # Load raster data
+    raster_files = [f for f in os.listdir('Inputs/Rasters') if f.endswith('.tif')]
+    if not raster_files:
+        print("No .tif files found in the directory.")
+        return
+    raster_data_list = []
+    raster_file_dict = {}  # New dictionary to store file names
+    for raster_file in raster_files:
+        raster_data, geotransform, projection = geo.process_raster(resource_path('Inputs/Rasters/' + raster_file))
+        raster_data_list.append((raster_data, geotransform, projection))
+        raster_file_dict[id(raster_data)] = raster_file  # Store file name using id of raster_data as key
 
+    for raster_data, geotransform, projection in raster_data_list:
 
-# Sample raster values at calibration points
-calibration_points = calc.sample_point(raster_data, geotransform, calibration_points, 
+        # Generate name of output file based on the current raster file name
+        raster_file_name = os.path.splitext(raster_file_dict[id(raster_data)])[0]
+        output_file = 'Outputs/' + raster_file_name
+        print(output_file)
+
+        # Check if the output file already exists, if so, skip this raster
+        if os.path.exists(output_file + '.csv'):
+            print(f"Output file {output_file} already exists, skipping this raster.")
+            continue
+
+        # Sample raster values at calibration points
+        calibration_points = calc.sample_point(raster_data, geotransform, calibration_points, 
                                              x_col='E', y_col='N', z_col='Z')
 
-# Now you can easily access the sampled values and differences
-#print(calibration_points[['E', 'N', 'Z', 'Sampled_Value', 'Difference']])
+        # Calculate stationing
+        calibration_points = calc.calculate_stationing(calibration_points, centerline_gdf)
 
-# Print column names and first few rows
-#print(calibration_points.columns)
-#print(calibration_points.head())
+        # Create the calibration plot
+        out.plot_wse_comparison(calibration_points, output_file)
 
-# Calculate stationing
-calibration_points = calc.calculate_stationing(calibration_points, centerline_gdf)
+        # Output calibration points to CSV
+        calibration_points.to_csv(output_file+'.csv', index=False)
+        print(f"Sampled points saved to {output_file}")
 
-# Create the calibration plot
-out.create_calibration_plot(calibration_points, 
-                               l_bounds=-0.5, 
-                               u_bounds=0.5, 
-                               output_file=output_file)
-# Output calibration points to CSV
-calibration_points.to_csv(output_file+'.csv', index=False)
-print(f"Sampled points saved to {output_file}")
-
-# Plot WSE comparison
-#out.plot_wse_comparison(calibration_points,output_file+'.png')
+if __name__ == "__main__":
+    main()

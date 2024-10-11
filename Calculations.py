@@ -62,7 +62,7 @@ def sample_point(raster_data, geotransform, points_df, x_col='X', y_col='Y', z_c
                     
                     # Check if the new coordinates are within bounds
                     if 0 <= new_x < width and 0 <= new_y < height:
-                        if raster_data[new_y, new_x] != -9999.0:  # Check for valid value
+                        if raster_data[new_y, new_x] > 0:  # Check for valid value
                             print('Found valid pixel at ', new_x, new_y)
                             print('Search range is ', search_range)
                             return new_x, new_y  # Return the first valid pixel found

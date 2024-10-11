@@ -65,7 +65,7 @@ def create_calibration_plot(cal_pts_df, l_bounds=-0.5, u_bounds=0.5, output_file
               edgecolor='black')
 
     # Add title and subtitles
-    plt.title('R_IC_2_10_1: Calibration Check')
+    plt.title(output_file.replace('Outputs/', '') + ": Grade Check")
     #calculated_value = np.average(cal_pts_df['Difference'])
     Avg_Diff = cal_pts_df['Difference'].mean()
     RMSE = np.sqrt(np.mean(cal_pts_df['Difference_Squared']))
