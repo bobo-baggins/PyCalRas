@@ -5,15 +5,19 @@ import GeoDataPro as geo
 import Output as out    
 
 # Load raster data
-raster_file = 'Inputs/Supply_6cfs_Vel_v2.tif'
+raster_file = 'Inputs/Rasters/WSE_Two_Rivers.tif'
 raster_data, geotransform, projection = geo.process_raster(raster_file)
 
 # Load calibration points
-input_PNEZ = 'Inputs/Supply_6cfs_Vel.csv'
+input_PNEZ = 'Inputs/Calibration_Points/WSE_Two_Rivers_PNEZD.csv'
 calibration_points = pd.read_csv(input_PNEZ)
 
+# Generate name of output file based on input file name
+output_file = 'Outputs/' + input_PNEZ.split('/')[-1].replace('.csv', '')
+print(output_file)
+
 # Load centerline shapefile
-centerline_shapefile = 'Inputs/Alignment/240925_SupplyAlignment.shp'
+centerline_shapefile = 'Inputs/Alignment/Clackamas Calibration Long Profile.shp'
 centerline_gdf = geo.read_centerline_shapefile(centerline_shapefile)
 
 
@@ -25,7 +29,7 @@ calibration_points = calc.sample_point(raster_data, geotransform, calibration_po
 #print(calibration_points[['E', 'N', 'Z', 'Sampled_Value', 'Difference']])
 
 # Print column names and first few rows
-print(calibration_points.columns)
+#print(calibration_points.columns)
 #print(calibration_points.head())
 
 # Calculate stationing
@@ -35,11 +39,10 @@ calibration_points = calc.calculate_stationing(calibration_points, centerline_gd
 out.create_calibration_plot(calibration_points, 
                                l_bounds=-0.5, 
                                u_bounds=0.5, 
-                               output_file='Outputs/Supply_6cfs_Vel_Cal.png')
+                               output_file=output_file)
 # Output calibration points to CSV
-output_csv_path = 'Outputs/Supply_6cfs_Vel_Cal.csv'
-calibration_points.to_csv(output_csv_path, index=False)
-print(f"Sampled points saved to {output_csv_path}")
+calibration_points.to_csv(output_file+'.csv', index=False)
+print(f"Sampled points saved to {output_file}")
 
 # Plot WSE comparison
-out.plot_wse_comparison(calibration_points,'Outputs/Vel_Comparison.png')
+out.plot_wse_comparison(calibration_points,output_file+'.png')

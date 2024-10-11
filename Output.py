@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from adjustText import adjust_text
 
-def create_calibration_plot(cal_pts_df, l_bounds=-0.5, u_bounds=0.5, output_file='Outputs/Supply_WSE_Check.png'):
+def create_calibration_plot(cal_pts_df, l_bounds=-0.5, u_bounds=0.5, output_file=''):
     """
     Create a calibration plot based on the provided data.
 
@@ -24,7 +24,7 @@ def create_calibration_plot(cal_pts_df, l_bounds=-0.5, u_bounds=0.5, output_file
     palette = {'Low': 'blue', 'Ok': 'White', 'High': 'red'}
 
     # Create plot
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(10, 10))
 
     sns.scatterplot(data=cal_pts_df, 
                     x='E', y='N', 
@@ -32,6 +32,9 @@ def create_calibration_plot(cal_pts_df, l_bounds=-0.5, u_bounds=0.5, output_file
                     hue='ColorCat', 
                     palette=palette,
                     ax=ax)
+
+    # Set the aspect ratio to be equal
+    ax.set_aspect('equal', adjustable='box')
 
     # Add text labels
     texts = []
@@ -54,7 +57,7 @@ def create_calibration_plot(cal_pts_df, l_bounds=-0.5, u_bounds=0.5, output_file
 
     # Add legend
     ax.legend(title='Categories', 
-              loc='lower left', 
+              loc='upper right', 
               fontsize='medium', 
               title_fontsize='13', 
               frameon=True, 
@@ -62,16 +65,16 @@ def create_calibration_plot(cal_pts_df, l_bounds=-0.5, u_bounds=0.5, output_file
               edgecolor='black')
 
     # Add title and subtitles
-    plt.title('Supply_6cfs_WSE: Calibration Check')
+    plt.title('R_IC_2_10_1: Calibration Check')
     #calculated_value = np.average(cal_pts_df['Difference'])
     Avg_Diff = cal_pts_df['Difference'].mean()
     RMSE = np.sqrt(np.mean(cal_pts_df['Difference_Squared']))
     p_value = cal_pts_df['Z'].corr(cal_pts_df['Sampled_Value'])
 
     plt.text(0.5, 0.04, f"Ok = + or - {u_bounds} ft.", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
-    plt.text(0.5, 1.04, f"Average Difference = {Avg_Diff:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
-    plt.text(0.5, 1.07, f"RMSE = {RMSE:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
-    plt.text(0.5, 1.10, f"Pearson = {p_value:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+    plt.text(0.5, 1.08, f"Average Difference = {Avg_Diff:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+    #plt.text(0.5, 1.07, f"RMSE = {RMSE:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+    #plt.text(0.5, 1.10, f"Pearson = {p_value:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
 
     # Set labels
     plt.xlabel('Easting (ft)')
@@ -116,9 +119,9 @@ def plot_wse_comparison(sampled_points_gdf, output_file):
     ax.text(0.5, 1.04, f"RMSE = {RMSE:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
     ax.text(0.5, 1.07, f"Pearson = {p_value:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
 
-    ax.set_title('Velocity Comparison: Measured vs. Model')
+    ax.set_title('WSE Comparison: Measured vs. Model')
     ax.set_xlabel('Stationing (ft.)')
-    ax.set_ylabel('Velocity (ft/s)')
+    ax.set_ylabel('WSE (ft.)')
     ax.legend()
     ax.grid()
     
