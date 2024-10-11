@@ -5,13 +5,17 @@ import GeoDataPro as geo
 import Output as out    
 
 # Load raster data
-raster_file = 'Inputs/Rasters/WSE_Two_Rivers.tif'
+raster_file = 'Inputs/Rasters/Design_Surface.tif'
 raster_data, geotransform, projection = geo.process_raster(raster_file)
 
 # Load calibration points
-input_PNEZ = 'Inputs/Calibration_Points/WSE_Two_Rivers_PNEZD.csv'
+input_PNEZ = 'Inputs/Sample_Points/USOLGB.csv'
 calibration_points = pd.read_csv(input_PNEZ, header=None)
-if calibration_points.iloc[0].str.isalpha().all():
+
+# Debugging: Print the first row to check its content
+print("First Row of Calibration Points:", calibration_points.iloc[0])
+
+if not calibration_points.iloc[0].str.isalpha().all():
     calibration_points.columns = ['P', 'N', 'E', 'Z', 'D']
 print(calibration_points.head())
 
@@ -48,4 +52,4 @@ calibration_points.to_csv(output_file+'.csv', index=False)
 print(f"Sampled points saved to {output_file}")
 
 # Plot WSE comparison
-out.plot_wse_comparison(calibration_points,output_file+'.png')
+#out.plot_wse_comparison(calibration_points,output_file+'.png')
