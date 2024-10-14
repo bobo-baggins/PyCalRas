@@ -6,47 +6,66 @@ import Output as out
 import os
 import sys
 
+def get_executable_dir():
+    if getattr(sys, 'frozen', False):
+        # Running as compiled executable
+        return os.path.dirname(sys.executable)
+    else:
+        # Running as a normal Python script
+        return os.path.dirname(os.path.abspath(__file__))
 
-def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
+# Use this function to construct your paths
+executable_dir = get_executable_dir()
 
-    return os.path.join(base_path, relative_path)
+# Now construct your paths relative to executable_dir
+sample_points_directory = os.path.join(executable_dir, 'Inputs', 'Sample_Points')
+rasters_directory = os.path.join(executable_dir, 'Inputs', 'Rasters')
+alignment_directory = os.path.join(executable_dir, 'Inputs', 'Alignment')
+
+# Print for debugging
+print(f"Executable directory: {executable_dir}")
+print(f"sample_points_directory: {sample_points_directory}")
+print(f"rasters_directory: {rasters_directory}")
+print(f"alignment_directory: {alignment_directory}")
 
 def main():
+    # Check if directories exist
+    for directory in [sample_points_directory, rasters_directory, alignment_directory]:
+        if not os.path.exists(directory):
+            print(f"Error: Directory does not exist: {directory}")
+            return  # Exit the function if any directory is missing
+
     # Load calibration points
-    sample_points_directory = resource_path('Inputs/Sample_Points')
     csv_files = [f for f in os.listdir(sample_points_directory) if f.endswith('.csv')]
     if not csv_files:
         print("No .csv files found in the directory.")
         return
     input_PNEZ = os.path.join(sample_points_directory, csv_files[0])
     calibration_points = pd.read_csv(input_PNEZ)
+    print('--------------------')
+    print('calibration_points:')
+    print(calibration_points.head())
+    print('--------------------')
 
     # Ensure columns are set correctly
     calibration_points.columns = ['P', 'N', 'E', 'Z', 'D']
 
     # Load centerline shapefile with error-checking
-    centerline_shapefile_path = resource_path('Inputs/Alignment')
-    shape_files = [f for f in os.listdir(centerline_shapefile_path) if f.endswith('.shp')]
+    shape_files = [f for f in os.listdir(alignment_directory) if f.endswith('.shp')]
     if not shape_files:
         print("No .shp files found in the directory.")
         return
-    centerline_gdf = geo.read_centerline_shapefile(os.path.join(centerline_shapefile_path, shape_files[0]))
+    centerline_gdf = geo.read_centerline_shapefile(os.path.join(alignment_directory, shape_files[0]))
 
     # Load raster data
-    raster_files = [f for f in os.listdir('Inputs/Rasters') if f.endswith('.tif')]
+    raster_files = [f for f in os.listdir(rasters_directory) if f.endswith('.tif')]
     if not raster_files:
         print("No .tif files found in the directory.")
         return
     raster_data_list = []
     raster_file_dict = {}  # New dictionary to store file names
     for raster_file in raster_files:
-        raster_data, geotransform, projection = geo.process_raster(resource_path('Inputs/Rasters/' + raster_file))
+        raster_data, geotransform, projection = geo.process_raster(os.path.join(rasters_directory, raster_file))
         raster_data_list.append((raster_data, geotransform, projection))
         raster_file_dict[id(raster_data)] = raster_file  # Store file name using id of raster_data as key
 
@@ -54,7 +73,7 @@ def main():
 
         # Generate name of output file based on the current raster file name
         raster_file_name = os.path.splitext(raster_file_dict[id(raster_data)])[0]
-        output_file = 'Outputs/' + raster_file_name
+        output_file = os.path.join(executable_dir, 'Outputs', raster_file_name)
         print(output_file)
 
         # Check if the output file already exists, if so, skip this raster
