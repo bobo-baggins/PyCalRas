@@ -80,17 +80,17 @@ def main():
         if os.path.exists(output_file + '.csv'):
             print(f"Output file {output_file} already exists, skipping this raster.")
             continue
-
+        print("Calibrating")
         # Sample raster values at calibration points
         calibration_points = calc.sample_point(raster_data, geotransform, calibration_points, 
                                              x_col='E', y_col='N', z_col='Z')
-
+        print("Stationing")
         # Calculate stationing
         calibration_points = calc.calculate_stationing(calibration_points, centerline_gdf)
-
+        print("Plotting")
         # Create the calibration plot
         out.plot_wse_comparison(calibration_points, output_file)
-
+        print("Outputting")
         # Output calibration points to CSV
         calibration_points.to_csv(output_file+'.csv', index=False)
         print(f"Sampled points saved to {output_file}")

@@ -12,3 +12,5 @@ dependencies:
   - gdal
   - adjustText
   - geopandas
+  - pyogrio
+  - fiona

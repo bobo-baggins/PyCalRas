@@ -109,7 +109,7 @@ def plot_wse_comparison(sampled_points_gdf, output_file):
     ax.scatter(sampled_points_gdf['Stationing'], sampled_points_gdf['Sampled_Value'], 
                 color='green', label='Model Results', marker='s', s=10)
 
-   # Calculate Stats
+    # Calculate Stats
     Avg_Diff = sampled_points_gdf['Difference'].mean() 
     RMSE = np.sqrt(np.mean(sampled_points_gdf['Difference_Squared']))
     p_value = sampled_points_gdf['Z'].corr(sampled_points_gdf['Sampled_Value'])
@@ -124,6 +124,10 @@ def plot_wse_comparison(sampled_points_gdf, output_file):
     ax.set_ylabel('WSE (ft.)')
     ax.legend()
     ax.grid()
+    
+    # Format axis labels with commas for thousands
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: format(int(x), ',')))
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: format(int(x), ',')))
     
     # Reverse the x-axis
     ax.invert_xaxis()

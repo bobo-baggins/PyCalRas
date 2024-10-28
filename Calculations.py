@@ -25,13 +25,13 @@ def sample_point(raster_data, geotransform, points_df, x_col='X', y_col='Y', z_c
         if 0 <= pixel_x < raster_data.shape[1] and 0 <= pixel_y < raster_data.shape[0]:
             value = raster_data[pixel_y, pixel_x]
             if value < -9000:
-                print('--------------------------------------------------')
-                print('Value is ', value, 'for point ', pixel_x, pixel_y)
+                #print('--------------------------------------------------')
+                #print('Value is ', value, 'for point ', pixel_x, pixel_y)
                 closest_pixel_x, closest_pixel_y = find_closest_valid_pixel(pixel_x, pixel_y, raster_data)
                 value = raster_data[closest_pixel_y, closest_pixel_x]  # Get value from the closest valid pixel
-                print('So grabbing nearest value')
-                print('Value is ', value, 'for point ', closest_pixel_x, closest_pixel_y)
-                print('--------------------------------------------------')
+                #print('So grabbing nearest value')
+                #print('Value is ', value, 'for point ', closest_pixel_x, closest_pixel_y)
+                #print('--------------------------------------------------')
                 difference = value - row[z_col]
                 if abs(difference) > 2 * row[z_col]:  # Check if difference is more than 10%
                     return pd.Series({'Sampled_Value': np.nan, 'Difference': np.nan})
@@ -45,13 +45,13 @@ def sample_point(raster_data, geotransform, points_df, x_col='X', y_col='Y', z_c
                     return pd.Series({'Sampled_Value': value, 'Difference': difference})
         else:
             # Find the closest valid pixel if out of bounds
-            print('Out of bounds')
+            #print('Out of bounds')
             return 
 
     def find_closest_valid_pixel(pixel_x, pixel_y, raster_data):
         # Define the search range (you can adjust this if needed)
         height, width = raster_data.shape
-        search_range = int(0.001 * np.sqrt(float(height)**2 + float(width)**2))  # Start with a small search range
+        search_range = 1 + int(0.001 * np.sqrt(float(height)**2 + float(width)**2))  # Start with a small search range
         print(search_range)
 
         while search_range <= 101:  # Increase the search range in increments of 10 pixels
@@ -63,8 +63,8 @@ def sample_point(raster_data, geotransform, points_df, x_col='X', y_col='Y', z_c
                     # Check if the new coordinates are within bounds
                     if 0 <= new_x < width and 0 <= new_y < height:
                         if raster_data[new_y, new_x] > 0:  # Check for valid value
-                            print('Found valid pixel at ', new_x, new_y)
-                            print('Search range is ', search_range)
+                            #print('Found valid pixel at ', new_x, new_y)
+                            #print('Search range is ', search_range)
                             return new_x, new_y  # Return the first valid pixel found
 
             search_range += search_range  # Increase the search range
