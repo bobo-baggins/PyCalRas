@@ -115,9 +115,9 @@ def plot_wse_comparison(sampled_points_gdf, output_file):
     p_value = sampled_points_gdf['Z'].corr(sampled_points_gdf['Sampled_Value'])
 
     # Add Subtitles
-    ax.text(0.5, 1.10, f"Average Difference = {Avg_Diff:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
-    ax.text(0.5, 1.04, f"RMSE = {RMSE:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
-    ax.text(0.5, 1.07, f"Pearson = {p_value:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+    ax.text(0.5, 1.10, f"Average Difference = {Avg_Diff:.3f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+    ax.text(0.5, 1.04, f"RMSE = {RMSE:.3f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+    ax.text(0.5, 1.07, f"Pearson = {p_value:.3f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
 
     ax.set_title('WSE Comparison: Measured vs. Model')
     ax.set_xlabel('Stationing (ft.)')
