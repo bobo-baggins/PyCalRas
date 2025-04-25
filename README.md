@@ -1,67 +1,112 @@
 # PyCalRas
 
-## Setup Instructions
+A Python package for calibration and raster analysis.
 
-### 1. Install Conda
+## Installation
 
-If you don't have Conda installed, follow these steps:
+### Prerequisites
 
-1. Download the Miniconda installer for your operating system from [here](https://docs.conda.io/en/latest/miniconda.html).
-2. Run the installer and follow the prompts.
-3. After installation, open a new terminal window to ensure Conda is initialized.
+- Python 3.9 or higher
+- Conda (recommended) or pip
+- GDAL and other geospatial libraries (required)
 
-To verify the installation, run:
+### Installation Steps
 
+#### Option 1: Using Conda (Recommended)
+
+1. Install Miniconda or Anaconda if you haven't already:
+   - [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
+   - [Anaconda](https://www.anaconda.com/products/distribution)
+
+2. Clone the repository:
+```bash
+git clone https://github.com/yourusername/pycalras.git
+cd pycalras
 ```
-conda --version
-```
 
-### 2. Create and Activate the Conda Environment
-
-1. Navigate to the project directory containing the `environment.yml` file.
-
-2. Create the Conda environment using the following command:
-
-```
+3. Create and activate the Conda environment:
+```bash
 conda env create -f environment.yml
+conda activate pyCal
 ```
 
-3. Activate the newly created environment:
+#### Option 2: Using pip (Not Recommended)
 
-```
-conda activate PyCal
-```
-
-### 3. Install Additional Dependencies
-
-If you need to install additional dependencies, you can do so using the following command:
-
-```
-conda install <package_name>
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/pycalras.git
+cd pycalras
 ```
 
-Replace `<package_name>` with the name of the package you want to install.
+2. Create a virtual environment (recommended):
+```bash
+python -m venv venv
+source venv/bin/activate  # On Linux/Mac
+# or
+.\venv\Scripts\activate  # On Windows
+```
 
-### 4. Setting Up in PyCharm
+3. Install the package:
+```bash
+pip install -e .
+```
 
-1. Open PyCharm and go to **File > Settings** (or **PyCharm > Preferences** on macOS).
-2. In the left pane, select **Project: [Your Project Name] > Python Interpreter**.
-3. Click the gear icon ⚙️ and select **Add**.
-4. Choose **Conda Environment** and select **Existing environment**.
-5. Browse to the location of your Conda environment (usually found in `~/miniconda3/envs/PyCal` or `~/anaconda3/envs/PyCal`).
-6. Select the `python.exe` file in the `bin` directory (or `Scripts` directory on Windows).
-7. Click **OK** to apply the changes.
+Note: Installing GDAL and other geospatial dependencies through pip can be challenging. We strongly recommend using Conda instead.
 
-### 5. Setting Up in Spyder
+## Directory Structure
 
-1. Open Spyder.
-2. Go to **Tools > Preferences**.
-3. In the left pane, select **Python Interpreter**.
-4. Choose **Use the following Python interpreter**.
-5. Browse to the location of your Conda environment (usually found in `~/miniconda3/envs/PyCal` or `~/anaconda3/envs/PyCal`).
-6. Select the `python.exe` file in the `bin` directory (or `Scripts` directory on Windows).
-7. Click **OK** to apply the changes.
+The package expects the following directory structure:
+```
+.
+├── Main.py
+├── Calculations.py
+├── GeoDataPro.py
+├── Output.py
+├── Inputs/
+│   ├── Sample_Points/  # Contains CSV files with calibration points
+│   ├── Rasters/       # Contains TIF raster files
+│   └── Alignment/     # Contains SHP alignment files
+└── Outputs/           # Generated output files will be saved here
+```
 
-### 6. Running the Project
+## Usage
 
-Now you can run your project in either PyCharm or Spyder using the Conda environment you just set up.
+1. Place your input files in the appropriate directories:
+   - Calibration points CSV files in `Inputs/Sample_Points/`
+   - Raster TIF files in `Inputs/Rasters/`
+   - Alignment SHP files in `Inputs/Alignment/`
+
+2. Run the main script:
+```bash
+python Main.py
+```
+
+3. Check the `Outputs/` directory for generated files.
+
+## Input File Requirements
+
+### Calibration Points CSV
+- Required columns: P, N, E, Z, D
+- CSV format
+
+### Raster Files
+- TIF format
+- Georeferenced
+
+### Alignment Files
+- SHP format
+- Contains centerline data
+
+## Dependencies
+
+The package requires several geospatial libraries that are best installed through Conda:
+- GDAL
+- GeoPandas
+- PyOGRIO
+- Fiona
+
+These dependencies are automatically installed when using the Conda environment.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

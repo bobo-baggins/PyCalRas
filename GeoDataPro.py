@@ -2,20 +2,57 @@ from osgeo import gdal
 import geopandas as gpd
 import numpy as np
 from osgeo import osr
+from typing import Tuple, Optional
+import logging
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def process_raster(raster_file):
-    ds = gdal.Open(raster_file)
-    if ds is None:
-        raise ValueError(f"Could not open raster file: {raster_file}")
-
-    raster_data = ds.GetRasterBand(1).ReadAsArray()
-    geotransform = ds.GetGeoTransform()
-    projection = ds.GetProjection()
-
-    ds = None  # Close the dataset
-
-    return raster_data, geotransform, projection
+def process_raster(raster_file: str) -> Tuple[np.ndarray, Tuple[float, ...], str]:
+    """
+    Process a raster file and return its data, geotransform, and projection.
+    
+    Args:
+        raster_file: Path to the raster file
+        
+    Returns:
+        Tuple containing:
+        - raster_data: The raster data array
+        - geotransform: The geotransform parameters
+        - projection: The projection in WKT format
+        
+    Raises:
+        ValueError: If the raster file cannot be opened
+        RuntimeError: If there are issues reading the raster data
+    """
+    try:
+        ds = gdal.Open(raster_file)
+        if ds is None:
+            raise ValueError(f"Could not open raster file: {raster_file}")
+            
+        # Get raster data
+        band = ds.GetRasterBand(1)
+        if band is None:
+            raise RuntimeError("Could not get raster band")
+            
+        raster_data = band.ReadAsArray()
+        if raster_data is None:
+            raise RuntimeError("Could not read raster data")
+            
+        # Get geotransform and projection
+        geotransform = ds.GetGeoTransform()
+        projection = ds.GetProjection()
+        
+        # Clean up
+        band = None
+        ds = None
+        
+        return raster_data, geotransform, projection
+        
+    except Exception as e:
+        logger.error(f"Error processing raster file {raster_file}: {str(e)}")
+        raise
 
 # Make sure other necessary functions are also defined here
 
@@ -37,22 +74,27 @@ def geo_to_pixel(geo_x, geo_y, geotransform):
 
 # Add more functions as needed
 
-def read_centerline_shapefile(shapefile_path):
+def read_centerline_shapefile(shapefile_path: str) -> gpd.GeoDataFrame:
     """
     Read a centerline shapefile and return a GeoDataFrame.
-
+    
     Args:
-    shapefile_path (str): Path to the shapefile.
-
+        shapefile_path: Path to the shapefile
+        
     Returns:
-    gpd.GeoDataFrame: GeoDataFrame containing the centerline data.
+        GeoDataFrame containing the centerline data
+        
+    Raises:
+        ValueError: If the shapefile cannot be read
     """
     try:
         gdf = gpd.read_file(shapefile_path)
+        if gdf.empty:
+            raise ValueError("Shapefile is empty")
         return gdf
     except Exception as e:
-        print(f"Error reading shapefile: {e}")
-        return None
+        logger.error(f"Error reading shapefile {shapefile_path}: {str(e)}")
+        raise
 
 def convert_dat_to_raster(dat_file, raster_file, nrows, ncols, geotransform, projection):
     """
