@@ -3,137 +3,198 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from adjustText import adjust_text
+from typing import Optional
+import logging
 
-def create_calibration_plot(cal_pts_df, l_bounds=-0.5, u_bounds=0.5, output_file=''):
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def create_calibration_plot(
+    cal_pts_df: pd.DataFrame,
+    l_bounds: float = -0.5,
+    u_bounds: float = 0.5,
+    output_file: str = ''
+) -> None:
     """
     Create a calibration plot based on the provided data.
 
     Args:
-    cal_pts_df (pd.DataFrame): DataFrame containing calibration points data.
-    l_bounds (float): Lower bound for 'Ok' category.
-    u_bounds (float): Upper bound for 'Ok' category.
-    output_file (str): Path to save the output plot.
+        cal_pts_df: DataFrame containing calibration points data
+        l_bounds: Lower bound for 'Ok' category
+        u_bounds: Upper bound for 'Ok' category
+        output_file: Path to save the output plot
 
     Returns:
-    None
+        None
     """
-    # Categorize differences
-    cal_pts_df['ColorCat'] = pd.cut(cal_pts_df['Difference'],
-                                    bins=[-float('inf'), l_bounds, u_bounds, float('inf')],
-                                    labels=['Low', 'Ok', 'High'])
-    palette = {'Low': 'blue', 'Ok': 'White', 'High': 'red'}
+    try:
+        # Check if dataset is too large
+        if len(cal_pts_df) > 10000:
+            logger.warning("Large dataset detected. Reducing plot complexity for memory efficiency.")
+            # Reduce figure size
+            fig, ax = plt.subplots(figsize=(8, 8))
+            # Reduce marker size
+            marker_size = 50
+        else:
+            fig, ax = plt.subplots(figsize=(10, 10))
+            marker_size = 100
 
-    # Create plot
-    fig, ax = plt.subplots(figsize=(10, 10))
+        # Categorize differences
+        cal_pts_df['ColorCat'] = pd.cut(
+            cal_pts_df['Difference'],
+            bins=[-float('inf'), l_bounds, u_bounds, float('inf')],
+            labels=['Low', 'Ok', 'High']
+        )
+        palette = {'Low': 'blue', 'Ok': 'White', 'High': 'red'}
 
-    sns.scatterplot(data=cal_pts_df, 
-                    x='E', y='N', 
-                    edgecolor='black',
-                    hue='ColorCat', 
-                    palette=palette,
-                    ax=ax)
+        # Create scatter plot with reduced complexity
+        sns.scatterplot(
+            data=cal_pts_df,
+            x='E',
+            y='N',
+            edgecolor='black',
+            hue='ColorCat',
+            palette=palette,
+            ax=ax,
+            s=marker_size,
+            alpha=0.7
+        )
 
-    # Set the aspect ratio to be equal
-    ax.set_aspect('equal', adjustable='box')
+        # Set aspect ratio
+        ax.set_aspect('equal', adjustable='box')
 
-    # Add text labels
-    texts = []
-    for i in range(cal_pts_df.shape[0]):
-        if cal_pts_df['ColorCat'][i] in ['Low', 'High']:
-            label_text = f"{cal_pts_df['Difference'][i]:.1f}"
-            text = ax.annotate(label_text,
-                          xy=(cal_pts_df['E'][i], cal_pts_df['N'][i]),
-                          xytext=(cal_pts_df['E'][i], cal_pts_df['N'][i]),
-                          fontsize=10,
-                          color='black',
-                          arrowprops=dict(arrowstyle='->', color='black', shrinkA=1),
-                          fontfamily='Arial')
-            texts.append(text)
+        # Only add text labels for significant outliers
+        significant_outliers = cal_pts_df[
+            (cal_pts_df['ColorCat'].isin(['Low', 'High'])) & 
+            (abs(cal_pts_df['Difference']) > 1.0)
+        ]
+        
+        if len(significant_outliers) > 0:
+            texts = []
+            for idx, row in significant_outliers.iterrows():
+                text = ax.annotate(
+                    f"{row['Difference']:.1f}",
+                    xy=(row['E'], row['N']),
+                    xytext=(row['E'], row['N']),
+                    fontsize=8,
+                    color='black',
+                    arrowprops=dict(arrowstyle='->', color='black', shrinkA=1),
+                    fontfamily='Arial'
+                )
+                texts.append(text)
 
-    # Adjust text positions
-    adjust_text(texts, 
-                only_move={'points': 'xy', 'text': 'xy'},
-                max_iterations=500)
+            # Adjust text positions with reduced iterations
+            adjust_text(texts, only_move={'points': 'xy', 'text': 'xy'}, max_iterations=100)
 
-    # Add legend
-    ax.legend(title='Categories', 
-              loc='upper right', 
-              fontsize='medium', 
-              title_fontsize='13', 
-              frameon=True, 
-              facecolor='white', 
-              edgecolor='black')
+        # Add legend
+        ax.legend(
+            title='Categories',
+            loc='upper right',
+            fontsize='medium',
+            title_fontsize='13',
+            frameon=True,
+            facecolor='white',
+            edgecolor='black'
+        )
 
-    # Add title and subtitles
-    plt.title(output_file.replace('Outputs/', '') + ": Grade Check")
-    #calculated_value = np.average(cal_pts_df['Difference'])
-    Avg_Diff = cal_pts_df['Difference'].mean()
-    RMSE = np.sqrt(np.mean(cal_pts_df['Difference_Squared']))
-    p_value = cal_pts_df['Z'].corr(cal_pts_df['Sampled_Value'])
+        # Add title and statistics
+        plt.title(output_file.replace('Outputs/', '') + ": Grade Check")
+        avg_diff = cal_pts_df['Difference'].mean()
+        rmse = np.sqrt(np.mean(cal_pts_df['Difference_Squared']))
+        p_value = cal_pts_df['Z'].corr(cal_pts_df['Sampled_Value'])
 
-    plt.text(0.5, 0.04, f"Ok = + or - {u_bounds} ft.", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
-    plt.text(0.5, 1.08, f"Average Difference = {Avg_Diff:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
-    #plt.text(0.5, 1.07, f"RMSE = {RMSE:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
-    #plt.text(0.5, 1.10, f"Pearson = {p_value:.2f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+        plt.text(0.5, 0.04, f"Ok = + or - {u_bounds} ft.",
+                ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+        plt.text(0.5, 1.08, f"Average Difference = {avg_diff:.2f}",
+                ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
 
-    # Set labels
-    plt.xlabel('Easting (ft)')
-    plt.ylabel('Northing (ft)')
+        # Set labels
+        plt.xlabel('Easting (ft)')
+        plt.ylabel('Northing (ft)')
 
-    # Save and close
-    plt.savefig(output_file, dpi=300)
-    plt.close()
+        # Save plot with reduced DPI for large datasets
+        dpi = 150 if len(cal_pts_df) > 10000 else 300
+        plt.savefig(output_file, dpi=dpi, bbox_inches='tight')
+        plt.close()
 
-    print(f"Plot saved to {output_file}")
-    print(f"Number of NaN values in Difference: {cal_pts_df['Difference'].isna().sum()}")
+        logger.info(f"Calibration plot saved to {output_file}")
+        logger.info(f"Number of NaN values in Difference: {cal_pts_df['Difference'].isna().sum()}")
 
-def plot_wse_comparison(sampled_points_gdf, output_file):
+    except Exception as e:
+        logger.error(f"Error creating calibration plot: {str(e)}")
+        raise
+
+def plot_wse_comparison(
+    sampled_points_gdf: pd.DataFrame,
+    output_file: str
+) -> None:
     """
     Plot a comparison of measured WSE vs. model WSE.
 
     Args:
-    sampled_points_gdf (gpd.GeoDataFrame): GeoDataFrame containing stationing and WSE data.
-    model_wse_col (str): Name of the column containing model WSE values.
-    output_file (str): Path to save the output PNG file.
+        sampled_points_gdf: DataFrame containing stationing and WSE data
+        output_file: Path to save the output PNG file
 
     Returns:
-    None
+        None
     """
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    # Plot measured WSE (Z values)
-    ax.scatter(sampled_points_gdf['Stationing'], sampled_points_gdf['Z'], 
-                color='blue', label='Surveyed Depth', marker='o', s=10)
-    
-    # Plot sampled values
-    ax.scatter(sampled_points_gdf['Stationing'], sampled_points_gdf['Sampled_Value'], 
-                color='green', label='Model Results', marker='s', s=10)
+    try:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        # Plot measured WSE
+        ax.scatter(
+            sampled_points_gdf['Stationing'],
+            sampled_points_gdf['Z'],
+            color='blue',
+            label='Surveyed Depth',
+            marker='o',
+            s=10
+        )
+        
+        # Plot model results
+        ax.scatter(
+            sampled_points_gdf['Stationing'],
+            sampled_points_gdf['Sampled_Value'],
+            color='green',
+            label='Model Results',
+            marker='s',
+            s=10
+        )
 
-    # Calculate Stats
-    Avg_Diff = sampled_points_gdf['Difference'].abs().mean() 
-    RMSE = np.sqrt(np.mean(sampled_points_gdf['Difference_Squared']))
-    p_value = sampled_points_gdf['Z'].corr(sampled_points_gdf['Sampled_Value'])
+        # Calculate statistics
+        avg_diff = sampled_points_gdf['Difference'].abs().mean()
+        rmse = np.sqrt(np.mean(sampled_points_gdf['Difference_Squared']))
+        p_value = sampled_points_gdf['Z'].corr(sampled_points_gdf['Sampled_Value'])
 
-    # Add Subtitles
-    ax.text(0.5, 1.10, f"Average Residual = {Avg_Diff:.3f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
-    ax.text(0.5, 1.04, f"RMSE = {RMSE:.3f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
-    ax.text(0.5, 1.07, f"Pearson = {p_value:.3f}", ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+        # Add statistics to plot
+        ax.text(0.5, 1.10, f"Average Residual = {avg_diff:.3f}",
+                ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+        ax.text(0.5, 1.04, f"RMSE = {rmse:.3f}",
+                ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
+        ax.text(0.5, 1.07, f"Pearson = {p_value:.3f}",
+                ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
 
-    ax.set_title('WSE Comparison: Measured vs. Model')
-    ax.set_xlabel('Stationing (ft.)')
-    ax.set_ylabel('WSE (ft.)')
-    ax.legend()
-    ax.grid()
-    
-    # Format axis labels with commas for thousands
-    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: format(int(x), ',')))
-    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: format(int(x), ',')))
-    
-    # Reverse the x-axis
-    ax.invert_xaxis()
-    
-    # Save the plot as a PNG file
-    plt.savefig(output_file, dpi=300, bbox_inches='tight')
-    plt.close(fig)
+        # Set plot properties
+        ax.set_title('WSE Comparison: Measured vs. Model')
+        ax.set_xlabel('Stationing (ft.)')
+        ax.set_ylabel('WSE (ft.)')
+        ax.legend()
+        ax.grid()
+        
+        # Format axis labels
+        ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: format(int(x), ',')))
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: format(int(x), ',')))
+        
+        # Reverse x-axis
+        ax.invert_xaxis()
+        
+        # Save plot
+        plt.savefig(output_file, dpi=300, bbox_inches='tight')
+        plt.close(fig)
 
-    print(f"WSE comparison plot saved to {output_file}")
+        logger.info(f"WSE comparison plot saved to {output_file}")
+
+    except Exception as e:
+        logger.error(f"Error creating WSE comparison plot: {str(e)}")
+        raise

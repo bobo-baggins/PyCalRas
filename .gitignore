@@ -1,0 +1,30 @@
+# Python build directories
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Conda environment
+.envs/
+.conda/
+conda-env/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project specific directories
+Inputs/
+Outputs/
+logs/
+
+# PyInstaller
+*.spec
+*.build/
+dist/
+build/
+
+# OS specific files
+.DS_Store
+Thumbs.db 
