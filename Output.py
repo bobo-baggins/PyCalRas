@@ -29,6 +29,17 @@ def create_calibration_plot(
         None
     """
     try:
+        # Check if dataset is too large
+        if len(cal_pts_df) > 10000:
+            logger.warning("Large dataset detected. Reducing plot complexity for memory efficiency.")
+            # Reduce figure size
+            fig, ax = plt.subplots(figsize=(8, 8))
+            # Reduce marker size
+            marker_size = 50
+        else:
+            fig, ax = plt.subplots(figsize=(10, 10))
+            marker_size = 100
+
         # Categorize differences
         cal_pts_df['ColorCat'] = pd.cut(
             cal_pts_df['Difference'],
@@ -37,10 +48,7 @@ def create_calibration_plot(
         )
         palette = {'Low': 'blue', 'Ok': 'White', 'High': 'red'}
 
-        # Create plot
-        fig, ax = plt.subplots(figsize=(10, 10))
-
-        # Create scatter plot
+        # Create scatter plot with reduced complexity
         sns.scatterplot(
             data=cal_pts_df,
             x='E',
@@ -48,28 +56,36 @@ def create_calibration_plot(
             edgecolor='black',
             hue='ColorCat',
             palette=palette,
-            ax=ax
+            ax=ax,
+            s=marker_size,
+            alpha=0.7
         )
 
         # Set aspect ratio
         ax.set_aspect('equal', adjustable='box')
 
-        # Add text labels for outliers
-        texts = []
-        for idx, row in cal_pts_df[cal_pts_df['ColorCat'].isin(['Low', 'High'])].iterrows():
-            text = ax.annotate(
-                f"{row['Difference']:.1f}",
-                xy=(row['E'], row['N']),
-                xytext=(row['E'], row['N']),
-                fontsize=10,
-                color='black',
-                arrowprops=dict(arrowstyle='->', color='black', shrinkA=1),
-                fontfamily='Arial'
-            )
-            texts.append(text)
+        # Only add text labels for significant outliers
+        significant_outliers = cal_pts_df[
+            (cal_pts_df['ColorCat'].isin(['Low', 'High'])) & 
+            (abs(cal_pts_df['Difference']) > 1.0)
+        ]
+        
+        if len(significant_outliers) > 0:
+            texts = []
+            for idx, row in significant_outliers.iterrows():
+                text = ax.annotate(
+                    f"{row['Difference']:.1f}",
+                    xy=(row['E'], row['N']),
+                    xytext=(row['E'], row['N']),
+                    fontsize=8,
+                    color='black',
+                    arrowprops=dict(arrowstyle='->', color='black', shrinkA=1),
+                    fontfamily='Arial'
+                )
+                texts.append(text)
 
-        # Adjust text positions
-        adjust_text(texts, only_move={'points': 'xy', 'text': 'xy'}, max_iterations=500)
+            # Adjust text positions with reduced iterations
+            adjust_text(texts, only_move={'points': 'xy', 'text': 'xy'}, max_iterations=100)
 
         # Add legend
         ax.legend(
@@ -97,8 +113,9 @@ def create_calibration_plot(
         plt.xlabel('Easting (ft)')
         plt.ylabel('Northing (ft)')
 
-        # Save plot
-        plt.savefig(output_file, dpi=300)
+        # Save plot with reduced DPI for large datasets
+        dpi = 150 if len(cal_pts_df) > 10000 else 300
+        plt.savefig(output_file, dpi=dpi, bbox_inches='tight')
         plt.close()
 
         logger.info(f"Calibration plot saved to {output_file}")

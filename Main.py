@@ -6,6 +6,7 @@ import Output as out
 import os
 import sys
 import logging
+import geopandas as gpd
 from typing import List, Tuple, Optional
 from datetime import datetime
 
@@ -173,10 +174,10 @@ def main():
             try:
                 # Generate output file path
                 raster_name = os.path.splitext(raster_file)[0]
-                output_file = os.path.join(executable_dir, 'Outputs', raster_name)
+                output_file = os.path.join(executable_dir, 'Outputs', f"{raster_name}.png")
                 
                 # Skip if output already exists
-                if os.path.exists(output_file + '.csv'):
+                if os.path.exists(output_file):
                     logger.info(f"Output file {output_file} already exists, skipping.")
                     continue
                 
@@ -194,10 +195,14 @@ def main():
                 
                 # Create plots
                 out.create_calibration_plot(calibration_points, output_file=output_file)
-                out.plot_wse_comparison(calibration_points, output_file=output_file + '_wse')
+                out.plot_wse_comparison(calibration_points, output_file=output_file.replace('.png', '_wse.png'))
+                
+                # Drop geometry column before saving to CSV
+                if 'geometry' in calibration_points.columns:
+                    calibration_points = calibration_points.drop(columns=['geometry'])
                 
                 # Save results
-                calibration_points.to_csv(output_file + '.csv', index=False)
+                calibration_points.to_csv(output_file.replace('.png', '.csv'), index=False)
                 logger.info(f"Results saved to {output_file}")
                 
             except Exception as e:
