@@ -4,11 +4,6 @@ import sys
 import logging
 from datetime import datetime
 
-# Third-party imports
-import pandas as pd
-import numpy as np
-import geopandas as gpd
-
 # Local application imports
 import reading
 import Calculations as calc
