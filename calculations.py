@@ -56,9 +56,11 @@ def sample_raster_at_points(
                             return new_x, new_y
         return None
 
-    # Initialize result arrays
-    sampled_values = np.full(len(points_df), np.nan)
-    differences = np.full(len(points_df), np.nan)
+    # Initialize result arrays and counters
+    total_points = len(points_df)
+    valid_points = 0
+    sampled_values = np.full(total_points, np.nan)
+    differences = np.full(total_points, np.nan)
     
     # Process each point
     for idx, row in points_df.iterrows():
@@ -67,7 +69,6 @@ def sample_raster_at_points(
             
             # Check if point is within raster bounds
             if not (0 <= pixel_x < raster_data.shape[1] and 0 <= pixel_y < raster_data.shape[0]):
-                logger.warning(f"Point {idx} is outside raster bounds")
                 continue
                 
             value = raster_data[pixel_y, pixel_x]
@@ -76,7 +77,6 @@ def sample_raster_at_points(
             if value <= invalid_threshold:
                 closest = find_closest_valid_pixel(pixel_x, pixel_y)
                 if closest is None:
-                    logger.warning(f"No valid pixel found near point {idx}")
                     continue
                 value = raster_data[closest[1], closest[0]]
             
@@ -85,15 +85,22 @@ def sample_raster_at_points(
             if abs(difference) <= max_difference_ratio * abs(row[z_col]):
                 sampled_values[idx] = value
                 differences[idx] = difference
+                valid_points += 1
             
-        except Exception as e:
-            logger.error(f"Error processing point {idx}: {str(e)}")
+        except Exception:
             continue
     
     # Add results to DataFrame
     points_df['Sampled_Value'] = sampled_values
     points_df['Difference'] = differences
     points_df['Difference_Squared'] = differences ** 2
+    
+    # Log summary statistics
+    valid_percentage = (valid_points / total_points) * 100
+    logger.info(f"Valid points: {valid_points}/{total_points} ({valid_percentage:.1f}%)")
+    
+    if valid_percentage < 50:
+        logger.warning("Less than 50% of points are valid!")
     
     return points_df
 
