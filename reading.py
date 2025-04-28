@@ -6,9 +6,10 @@ import logging
 import geopandas as gpd
 from typing import List, Tuple
 import sys
+from logger_config import setup_logger
 
 # Configure logging
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 # Function to get the executable directory
 def get_executable_dir() -> str:

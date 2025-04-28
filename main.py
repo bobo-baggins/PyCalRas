@@ -1,29 +1,16 @@
 # Standard library imports
 import os
 import sys
-import logging
 from datetime import datetime
 
 # Local application imports
 import reading
 import calculations as calc
 import output as out
+from logger_config import setup_logger
 
 # Configure logging
-log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
-os.makedirs(log_dir, exist_ok=True)
-
-log_file = os.path.join(log_dir, f'pycalras_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 def main():
     """Main function to process calibration points and raster data."""
@@ -74,8 +61,15 @@ def main():
             calibration_points = calibration_points.drop(columns=['geometry'])
         
         # Save results
-        calibration_points.to_csv(output_file.replace('.png', '.csv'), index=False)
-        logger.info(f"Results saved to {output_file}")
+        output_csv = output_file.replace('.png', '.csv')
+        calibration_points.to_csv(output_csv, index=False)
+        logger.info(f"Results saved to {output_csv}")
+        
+        # Test output against reference
+        if calc.test_output(output_csv):
+            logger.info("Output validation passed ✓")
+        else:
+            logger.warning("Output validation failed ✗")
             
     except Exception as e:
         logger.error(f"An error occurred in main: {str(e)}")

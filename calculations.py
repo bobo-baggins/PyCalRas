@@ -2,11 +2,11 @@ import pandas as pd
 import numpy as np
 import geopandas as gpd
 from typing import Tuple, Optional
-import logging
+from logger_config import setup_logger
+import os
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 def sample_raster_at_points(
     raster_data: np.ndarray,
@@ -126,3 +126,66 @@ def calculate_stationing(
     except Exception as e:
         logger.error(f"Error calculating stationing: {str(e)}")
         raise
+
+def compare_output_csv(output_csv: str, test_csv: str, tolerance_percent: float = 1.0) -> bool:
+    """
+    Compare Sampled_Value in output CSV with test CSV.
+    
+    Args:
+        output_csv: Path to the output CSV file
+        test_csv: Path to the test CSV file in output/test directory
+        tolerance_percent: Maximum allowed percentage difference (default: 1.0%)
+        
+    Returns:
+        bool: True if values match within tolerance, False otherwise
+    """
+    try:
+        # Read CSVs
+        output_df = pd.read_csv(output_csv)
+        test_df = pd.read_csv(test_csv)
+        
+        # Check if Sampled_Value exists in both files
+        if 'Sampled_Value' not in output_df.columns or 'Sampled_Value' not in test_df.columns:
+            logger.error("Sampled_Value column not found in one or both files")
+            return False
+            
+        # Calculate percent differences
+        percent_diff = abs(output_df['Sampled_Value'] - test_df['Sampled_Value']) / test_df['Sampled_Value'] * 100
+        max_diff = percent_diff.max()
+        
+        if max_diff > tolerance_percent:
+            logger.error(f"Sampled values differ by up to {max_diff:.2f}%")
+            return False
+        
+        logger.info(f"Sampled values match within {tolerance_percent}% tolerance (max diff: {max_diff:.2f}%)")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error comparing CSV files: {str(e)}")
+        return False
+
+def test_output(output_file: str) -> bool:
+    """
+    Test output against reference file in output/test directory.
+    
+    Args:
+        output_file: Path to the output file
+        
+    Returns:
+        bool: True if test passes, False otherwise
+    """
+    try:
+        # Construct test file path
+        test_file = output_file.replace('Outputs/', 'Outputs/test/')
+        
+        # Check if test file exists
+        if not os.path.exists(test_file):
+            logger.error(f"Test file not found: {test_file}")
+            return False
+            
+        # Compare CSVs with 1% tolerance
+        return compare_output_csv(output_file, test_file, tolerance_percent=1.0)
+        
+    except Exception as e:
+        logger.error(f"Error in test_output: {str(e)}")
+        return False

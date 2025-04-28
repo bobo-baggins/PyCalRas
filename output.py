@@ -4,11 +4,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from adjustText import adjust_text
 from typing import Optional
-import logging
+from logger_config import setup_logger
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 def create_calibration_plot(
     cal_pts_df: pd.DataFrame,
