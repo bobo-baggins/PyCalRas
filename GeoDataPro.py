@@ -5,6 +5,9 @@ from osgeo import osr
 from typing import Tuple, Optional
 from logger_config import setup_logger
 
+# Configure GDAL to use exceptions
+gdal.UseExceptions()
+
 # Configure logging
 logger = setup_logger(__name__)
 

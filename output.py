@@ -99,13 +99,13 @@ def create_calibration_plot(
 
         # Add title and statistics
         plt.title(output_file.replace('Outputs/', '') + ": Grade Check")
-        avg_diff = cal_pts_df['Difference'].mean()
+        avg_diff = cal_pts_df['Difference'].abs().mean()
         rmse = np.sqrt(np.mean(cal_pts_df['Difference_Squared']))
         p_value = cal_pts_df['Z'].corr(cal_pts_df['Sampled_Value'])
 
         plt.text(0.5, 0.04, f"Ok = + or - {u_bounds} ft.",
                 ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
-        plt.text(0.5, 1.08, f"Average Difference = {avg_diff:.2f}",
+        plt.text(0.5, 1.08, f"Absolute Average Difference = {avg_diff:.2f}",
                 ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
 
         # Set labels
@@ -167,7 +167,7 @@ def plot_wse_comparison(
         p_value = sampled_points_gdf['Z'].corr(sampled_points_gdf['Sampled_Value'])
 
         # Add statistics to plot
-        ax.text(0.5, 1.10, f"Average Residual = {avg_diff:.3f}",
+        ax.text(0.5, 1.10, f"Absolute Average Difference = {avg_diff:.3f}",
                 ha='center', va='bottom', fontsize=12, transform=ax.transAxes)
         ax.text(0.5, 1.04, f"RMSE = {rmse:.3f}",
                 ha='center', va='bottom', fontsize=12, transform=ax.transAxes)

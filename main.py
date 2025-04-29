@@ -67,9 +67,9 @@ def main():
         
         # Test output against reference
         if calc.test_output(output_csv):
-            logger.info("Output validation passed ✓")
+            logger.info("Output validation passed [OK]")
         else:
-            logger.warning("Output validation failed ✗")
+            logger.warning("Output validation failed [FAILED]")
             
     except Exception as e:
         logger.error(f"An error occurred in main: {str(e)}")

@@ -1,6 +1,7 @@
 import os
 import logging
 from datetime import datetime
+import sys
 
 def setup_logger(name: str) -> logging.Logger:
     """
@@ -25,11 +26,11 @@ def setup_logger(name: str) -> logging.Logger:
     )
 
     # Setup file handler
-    file_handler = logging.FileHandler(log_file)
+    file_handler = logging.FileHandler(log_file, encoding='utf-8')
     file_handler.setFormatter(formatter)
 
-    # Setup console handler
-    console_handler = logging.StreamHandler()
+    # Setup console handler with UTF-8 encoding
+    console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
 
     # Get logger
