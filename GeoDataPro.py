@@ -3,11 +3,10 @@ import geopandas as gpd
 import numpy as np
 from osgeo import osr
 from typing import Tuple, Optional
-import logging
+from logger_config import setup_logger
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 def process_raster(raster_file: str) -> Tuple[np.ndarray, Tuple[float, ...], str]:
     """

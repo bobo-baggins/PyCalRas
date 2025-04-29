@@ -53,6 +53,26 @@ pip install -e .
 
 Note: Installing GDAL and other geospatial dependencies through pip can be challenging. We strongly recommend using Conda instead.
 
+## Code Structure
+
+### Module Overview
+- `main.py`: Main execution script orchestrating the workflow
+- `reading.py`: Handles file input and data loading
+- `calculations.py`: Performs computational analysis
+- `output.py`: Generates visualizations and results
+- `GeoDataPro.py`: Provides geospatial utilities
+
+### Key Functions
+- Data Loading: CSV points, TIF rasters, SHP centerlines
+- Spatial Analysis: Raster sampling, stationing calculation
+- Visualization: Calibration plots, WSE comparisons
+
+### Data Flow
+1. Load input files (reading.py)
+2. Process spatial data (GeoDataPro.py)
+3. Perform calculations (calculations.py)
+4. Generate visualizations (output.py)
+
 ## Directory Structure
 
 The package expects the following directory structure:
