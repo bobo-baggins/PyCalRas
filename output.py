@@ -1,5 +1,8 @@
 # Standard library imports
-from typing import Optional
+from typing import Optional, Tuple, Dict
+import os
+import csv
+from datetime import datetime
 
 # Third-party imports
 import pandas as pd
@@ -14,13 +17,159 @@ from logger_config import setup_logger
 # Configure logging
 logger = setup_logger(__name__)
 
+def create_run_directory(executable_dir: str, run_name: str, description: str) -> str:
+    """
+    Create a directory for the calibration run and save its description.
+    
+    Args:
+        executable_dir: Base directory for the application
+        run_name: Name of the calibration run
+        description: Description of the calibration run
+        
+    Returns:
+        str: Path to the created run directory
+        
+    Raises:
+        OSError: If directory creation fails
+    """
+    run_dir = os.path.join(executable_dir, 'Outputs', run_name)
+    os.makedirs(run_dir, exist_ok=True)
+    
+    # Create outliers subdirectory
+    outliers_dir = os.path.join(run_dir, 'outliers')
+    os.makedirs(outliers_dir, exist_ok=True)
+    
+    # Save run description
+    with open(os.path.join(run_dir, 'description.txt'), 'w') as f:
+        f.write(description)
+    
+    logger.info(f"Created run directory: {run_dir}")
+    return run_dir
+
+def get_output_paths(run_dir: str, raster_name: str) -> Tuple[str, str, str]:
+    """
+    Generate output file paths for a calibration run.
+    
+    Args:
+        run_dir: Directory for the calibration run
+        raster_name: Name of the raster file (without extension)
+        
+    Returns:
+        Tuple[str, str, str]: Paths to (plot_file, wse_plot_file, csv_file)
+    """
+    plot_file = os.path.join(run_dir, f"{raster_name}.png")
+    wse_plot_file = plot_file.replace('.png', '_wse.png')
+    csv_file = plot_file.replace('.png', '.csv')
+    
+    return plot_file, wse_plot_file, csv_file
+
+def get_shapefile_path(run_dir: str, raster_name: str) -> str:
+    """
+    Generate path for the outliers shapefile.
+    
+    Args:
+        run_dir: Directory for the calibration run
+        raster_name: Name of the raster file (without extension)
+        
+    Returns:
+        str: Path to the shapefile
+    """
+    outliers_dir = os.path.join(run_dir, 'outliers')
+    return os.path.join(outliers_dir, f"{raster_name}_outliers.shp")
+
+def get_run_log_path(executable_dir: str) -> str:
+    """
+    Get the path to the calibration run log file.
+    
+    Args:
+        executable_dir: Base directory for the application
+        
+    Returns:
+        str: Path to the run log file
+    """
+    return os.path.join(executable_dir, 'Outputs', 'calibration_runs.csv')
+
+def load_run_log(executable_dir: str) -> pd.DataFrame:
+    """
+    Load the calibration run log.
+    
+    Args:
+        executable_dir: Base directory for the application
+        
+    Returns:
+        pd.DataFrame: DataFrame containing run information
+    """
+    log_path = get_run_log_path(executable_dir)
+    if os.path.exists(log_path):
+        try:
+            return pd.read_csv(log_path)
+        except Exception as e:
+            logger.warning(f"Error reading run log file: {str(e)}. Creating new log.")
+            return pd.DataFrame(columns=['run_name', 'description', 'rmse', 'avg_diff', 'timestamp'])
+    return pd.DataFrame(columns=['run_name', 'description', 'rmse', 'avg_diff', 'timestamp'])
+
+def save_run_log(executable_dir: str, run_log: pd.DataFrame) -> None:
+    """
+    Save the calibration run log.
+    
+    Args:
+        executable_dir: Base directory for the application
+        run_log: DataFrame containing run information
+    """
+    log_path = get_run_log_path(executable_dir)
+    run_log.to_csv(log_path, index=False)
+
+def update_run_log(
+    executable_dir: str,
+    run_name: str,
+    description: str,
+    rmse: float,
+    avg_diff: float
+) -> None:
+    """
+    Update the calibration run log with new run information.
+    
+    Args:
+        executable_dir: Base directory for the application
+        run_name: Name of the calibration run
+        description: Description of the calibration run
+        rmse: Root Mean Square Error
+        avg_diff: Absolute Average Difference
+    """
+    run_log = load_run_log(executable_dir)
+    
+    # Format numbers to three significant figures
+    rmse_formatted = float(f"{rmse:.3g}")
+    avg_diff_formatted = float(f"{avg_diff:.3g}")
+    
+    # Create new run entry
+    new_entry = pd.DataFrame([{
+        'run_name': run_name,
+        'description': description,
+        'rmse': rmse_formatted,
+        'avg_diff': avg_diff_formatted,
+        'timestamp': datetime.now().isoformat()
+    }])
+    
+    # Remove existing entry if run_name exists
+    run_log = run_log[run_log['run_name'] != run_name]
+    
+    # Append new entry
+    run_log = pd.concat([run_log, new_entry], ignore_index=True)
+    
+    # Sort by timestamp (most recent first)
+    run_log = run_log.sort_values('timestamp', ascending=False)
+    
+    save_run_log(executable_dir, run_log)
+    logger.info(f"Updated run log with information for run: {run_name}")
+
 def create_calibration_plot(
     cal_pts_df: pd.DataFrame,
     centerline_gdf: pd.DataFrame,
     l_bounds: float = -0.5,
     u_bounds: float = 0.5,
     output_file: str = ''
-) -> None:
+) -> Tuple[float, float]:
     """
     Create a calibration plot based on the provided data.
 
@@ -32,9 +181,13 @@ def create_calibration_plot(
         output_file: Path to save the output plot
 
     Returns:
-        None
+        Tuple[float, float]: (rmse, average_difference)
     """
     try:
+        # Calculate statistics
+        rmse = np.sqrt(np.mean(cal_pts_df['Difference_Squared']))
+        avg_diff = cal_pts_df['Difference'].abs().mean()
+        
         # Calculate figure dimensions based on data extent
         x_range = cal_pts_df['E'].max() - cal_pts_df['E'].min()
         y_range = cal_pts_df['N'].max() - cal_pts_df['N'].min()
@@ -129,7 +282,7 @@ def create_calibration_plot(
                 geometry=gpd.points_from_xy(plot_df['E'], plot_df['N']),
                 crs=centerline_gdf.crs
             )
-            shapefile_path = output_file.replace('.png', '_outliers.shp')
+            shapefile_path = get_shapefile_path(os.path.dirname(output_file), os.path.splitext(os.path.basename(output_file))[0])
             gdf.to_file(shapefile_path)
             logger.info(f"Outlier points shapefile saved to {shapefile_path}")
         except Exception as e:
@@ -137,6 +290,8 @@ def create_calibration_plot(
 
         logger.info(f"Calibration plot saved to {output_file}")
         logger.info(f"Number of NaN values in Difference: {cal_pts_df['Difference'].isna().sum()}")
+        
+        return rmse, avg_diff
 
     except Exception as e:
         logger.error(f"Error creating calibration plot: {str(e)}")

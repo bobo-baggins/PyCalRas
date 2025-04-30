@@ -1,6 +1,108 @@
 # PyCalRas
 
-A Python package for calibration and raster analysis.
+A Python tool for calibrating raster data against survey points.
+
+## Features
+
+- Processes calibration points against raster data
+- Generates calibration plots and WSE comparison plots
+- Creates shapefiles of outlier points
+- Tracks calibration runs with statistics
+- Supports test mode for validation
+
+## Directory Structure
+
+```
+PyCalRas/
+├── Inputs/
+│   ├── Sample_Points/    # CSV files with calibration points
+│   ├── Rasters/         # TIF files for processing
+│   └── Alignment/       # Shapefiles for centerline
+├── Outputs/
+│   ├── calibration_runs.csv  # Log of all calibration runs
+│   └── run_name/            # Individual run outputs
+│       ├── description.txt
+│       ├── raster_name.png
+│       ├── raster_name_wse.png
+│       ├── raster_name.csv
+│       └── outliers/
+│           └── raster_name_outliers.shp
+└── src/
+    ├── main.py
+    ├── reading.py
+    ├── calculations.py
+    ├── output.py
+    └── logger_config.py
+```
+
+## Input Requirements
+
+### Sample Points (CSV)
+- Required columns: P, N, E, Z, D
+- Coordinates in feet
+- First CSV file in Sample_Points directory will be used
+
+### Raster (TIF)
+- GeoTIFF format
+- First TIF file in Rasters directory will be used
+
+### Centerline (SHP)
+- Shapefile format
+- First SHP file in Alignment directory will be used
+
+## Usage
+
+1. Place input files in their respective directories under `Inputs/`
+2. Run the script:
+   ```bash
+   python main.py
+   ```
+3. Enter a name and description for the calibration run when prompted
+4. View results in the `Outputs/run_name/` directory
+
+### Test Mode
+
+To run in test mode with output validation:
+```bash
+python main.py --test
+```
+
+## Output Files
+
+### Calibration Plot (PNG)
+- Shows high and low points relative to the centerline
+- Points are colored blue (low) or red (high)
+- Includes threshold information
+
+### WSE Comparison Plot (PNG)
+- Compares measured vs. model WSE
+- Includes RMSE and average difference statistics
+
+### Results CSV
+- Contains all point data with calculated differences
+- Includes stationing and sampled values
+
+### Outlier Shapefile
+- Contains only high and low points
+- Stored in the outliers subdirectory
+- Can be used for further analysis in GIS software
+
+### Run Log (CSV)
+- Tracks all calibration runs
+- Includes:
+  - Run name and description
+  - RMSE (3 significant figures)
+  - Average difference (3 significant figures)
+  - Timestamp
+- Sorted by most recent first
+- Duplicate run names overwrite previous entries
+
+## Notes
+
+- The script will automatically use the first file of each type found in the input directories
+- Run names must be valid for directory names (no special characters)
+- Existing run directories will prompt for overwrite confirmation
+- Test mode validates output against reference files in `Outputs/test/`
 
 ## Installation
 
@@ -73,36 +175,6 @@ Note: Installing GDAL and other geospatial dependencies through pip can be chall
 3. Perform calculations (calculations.py)
 4. Generate visualizations (output.py)
 
-## Directory Structure
-
-The package expects the following directory structure:
-```
-.
-├── Main.py
-├── Calculations.py
-├── GeoDataPro.py
-├── Output.py
-├── Inputs/
-│   ├── Sample_Points/  # Contains CSV files with calibration points
-│   ├── Rasters/       # Contains TIF raster files
-│   └── Alignment/     # Contains SHP alignment files
-└── Outputs/           # Generated output files will be saved here
-```
-
-## Usage
-
-1. Place your input files in the appropriate directories:
-   - Calibration points CSV files in `Inputs/Sample_Points/`
-   - Raster TIF files in `Inputs/Rasters/`
-   - Alignment SHP files in `Inputs/Alignment/`
-
-2. Run the main script:
-```bash
-python Main.py
-```
-
-3. Check the `Outputs/` directory for generated files.
-
 ## Testing
 
 The package includes a testing framework to validate output consistency. This is particularly useful when making code changes to ensure results remain consistent.
@@ -138,20 +210,6 @@ mkdir -p Outputs/test
 ```bash
 cp Outputs/your_output.csv Outputs/test/your_output.csv
 ```
-
-## Input File Requirements
-
-### Calibration Points CSV
-- Required columns: P, N, E, Z, D
-- CSV format
-
-### Raster Files
-- TIF format
-- Georeferenced
-
-### Alignment Files
-- SHP format
-- Contains centerline data
 
 ## Dependencies
 

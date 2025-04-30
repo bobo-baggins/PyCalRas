@@ -6,8 +6,6 @@ from datetime import datetime
 
 # Local application imports
 import reading
-import calculations as calc
-import output as out
 from logger_config import setup_logger
 
 # Configure logging
@@ -21,59 +19,19 @@ def main():
         parser.add_argument('--test', action='store_true', help='Run output validation against test files')
         args = parser.parse_args()
 
-        # Get executable directory and setup paths
+        # Get executable directory
         executable_dir = reading.get_executable_dir()
-        points_file, raster_file, centerline_file = reading.setup_directories(executable_dir)
         
-        # Load calibration points
-        calibration_points = reading.load_calibration_points(points_file)
-        logger.info('Calibration points loaded successfully')
+        # Get run information from user
+        run_name, description = reading.get_run_info()
         
-        # Load centerline
-        centerline_gdf = reading.load_centerline(centerline_file)
-        logger.info('Centerline loaded successfully')
-        
-        # Process raster file
-        raster_data, geotransform, projection = reading.process_raster(raster_file)
-        logger.info(f'Raster file processed successfully')
-        
-        # Generate output file paths
-        raster_name = os.path.splitext(os.path.basename(raster_file))[0]
-        output_file = os.path.join(executable_dir, 'Outputs', f"{raster_name}.png")
-        
-        # Process the raster
-        logger.info(f"Processing raster: {raster_file}")
-        
-        # Sample raster values
-        calibration_points = calc.sample_raster_at_points(
-            raster_data, geotransform, calibration_points,
-            x_col='E', y_col='N', z_col='Z'
+        # Process the calibration run
+        reading.process_calibration_run(
+            executable_dir=executable_dir,
+            run_name=run_name,
+            description=description,
+            test_mode=args.test
         )
-        
-        # Calculate stationing
-        calibration_points = calc.calculate_stationing(calibration_points, centerline_gdf)
-        
-        # Create plots
-        out.create_calibration_plot(calibration_points, centerline_gdf, output_file=output_file)
-        out.plot_wse_comparison(calibration_points, output_file=output_file.replace('.png', '_wse.png'))
-        
-        # Drop geometry column before saving to CSV
-        if 'geometry' in calibration_points.columns:
-            calibration_points = calibration_points.drop(columns=['geometry'])
-        
-        # Save results
-        output_csv = output_file.replace('.png', '.csv')
-        calibration_points.to_csv(output_csv, index=False)
-        logger.info(f"Results saved to {output_csv}")
-        
-        # Test output against reference if --test flag is set
-        if args.test:
-            if calc.test_output(output_csv):
-                logger.info("Output validation passed [OK]")
-            else:
-                logger.warning("Output validation failed [FAILED]")
-        else:
-            logger.info("Output validation skipped (use --test to enable)")
             
     except Exception as e:
         logger.error(f"An error occurred in main: {str(e)}")
