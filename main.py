@@ -35,11 +35,6 @@ def main():
         raster_name = os.path.splitext(os.path.basename(raster_file))[0]
         output_file = os.path.join(executable_dir, 'Outputs', f"{raster_name}.png")
         
-        # Skip if output already exists
-        if os.path.exists(output_file):
-            logger.info(f"Output file {output_file} already exists, skipping.")
-            return
-        
         # Process the raster
         logger.info(f"Processing raster: {raster_file}")
         
@@ -53,7 +48,7 @@ def main():
         calibration_points = calc.calculate_stationing(calibration_points, centerline_gdf)
         
         # Create plots
-        out.create_calibration_plot(calibration_points, output_file=output_file)
+        out.create_calibration_plot(calibration_points, centerline_gdf, output_file=output_file)
         out.plot_wse_comparison(calibration_points, output_file=output_file.replace('.png', '_wse.png'))
         
         # Drop geometry column before saving to CSV
