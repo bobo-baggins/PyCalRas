@@ -1,6 +1,7 @@
 # Standard library imports
 import os
 import sys
+import argparse
 from datetime import datetime
 
 # Local application imports
@@ -15,6 +16,11 @@ logger = setup_logger(__name__)
 def main():
     """Main function to process calibration points and raster data."""
     try:
+        # Parse command line arguments
+        parser = argparse.ArgumentParser(description='Process calibration points and raster data.')
+        parser.add_argument('--test', action='store_true', help='Run output validation against test files')
+        args = parser.parse_args()
+
         # Get executable directory and setup paths
         executable_dir = reading.get_executable_dir()
         points_file, raster_file, centerline_file = reading.setup_directories(executable_dir)
@@ -60,11 +66,14 @@ def main():
         calibration_points.to_csv(output_csv, index=False)
         logger.info(f"Results saved to {output_csv}")
         
-        # Test output against reference
-        if calc.test_output(output_csv):
-            logger.info("Output validation passed [OK]")
+        # Test output against reference if --test flag is set
+        if args.test:
+            if calc.test_output(output_csv):
+                logger.info("Output validation passed [OK]")
+            else:
+                logger.warning("Output validation failed [FAILED]")
         else:
-            logger.warning("Output validation failed [FAILED]")
+            logger.info("Output validation skipped (use --test to enable)")
             
     except Exception as e:
         logger.error(f"An error occurred in main: {str(e)}")

@@ -103,6 +103,42 @@ python Main.py
 
 3. Check the `Outputs/` directory for generated files.
 
+## Testing
+
+The package includes a testing framework to validate output consistency. This is particularly useful when making code changes to ensure results remain consistent.
+
+### Test Files
+- Test files are stored in the `Outputs/test/` directory
+- Each test file should correspond to an output file with the same name
+- Test files contain reference values for validation
+
+### Running Tests
+To run the script with output validation:
+```bash
+python Main.py --test
+```
+
+Without the `--test` flag, validation is skipped:
+```bash
+python Main.py
+```
+
+### Test Validation
+- The validation compares the `Sampled_Value` column in the output CSV with the reference test file
+- Results must match within 1% tolerance
+- Validation results are logged to the console
+
+### Setting Up Tests
+1. Create the test directory:
+```bash
+mkdir -p Outputs/test
+```
+
+2. Copy a known good output CSV to use as a reference:
+```bash
+cp Outputs/your_output.csv Outputs/test/your_output.csv
+```
+
 ## Input File Requirements
 
 ### Calibration Points CSV
