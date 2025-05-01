@@ -1,7 +1,7 @@
 # Standard library imports
 import os
 import sys
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 # Third-party imports
 import pandas as pd
@@ -17,6 +17,12 @@ from logger_config import setup_logger
 
 # Configure logging
 logger = setup_logger(__name__)
+
+DATA_TYPE_UNITS = {
+    'WSE': 'ft',
+    'Depth': 'ft',
+    'Velocity': 'ft/s'
+}
 
 def get_executable_dir() -> str:
     """
@@ -132,7 +138,7 @@ def setup_directories(executable_dir: str) -> Tuple[str, str, str]:
     
     return sample_points_file, raster_file, alignment_file
 
-def load_calibration_points(filepath: str) -> pd.DataFrame:
+def load_calibration_points(filepath: str) -> Tuple[pd.DataFrame, List[str]]:
     """
     Load calibration points from CSV file.
     Matches columns based on first letter:
@@ -148,6 +154,7 @@ def load_calibration_points(filepath: str) -> pd.DataFrame:
         
     Returns:
         pd.DataFrame: DataFrame containing calibration points with standardized column names
+        List[str]: List of available data types
         
     Raises:
         ValueError: If file is not CSV or missing required columns
@@ -187,7 +194,10 @@ def load_calibration_points(filepath: str) -> pd.DataFrame:
     # Rename columns
     calibration_points = calibration_points.rename(columns=column_mapping)
     
-    return calibration_points
+    # Get list of available data types
+    available_types = [col for col in data_type_columns if col in column_mapping.values()]
+    
+    return calibration_points, available_types
 
 def load_centerline(filepath: str) -> gpd.GeoDataFrame:
     """
@@ -230,6 +240,22 @@ def process_raster(filepath: str) -> Tuple[np.ndarray, Tuple[float, ...], str]:
         logger.error(f"Error processing raster file {filepath}: {str(e)}")
         raise
 
+def find_matching_raster(raster_dir: str, data_type: str) -> Optional[str]:
+    """
+    Find a raster file that matches the data type.
+    Example: if data_type is "WSE", look for files like "WSE_*.tif"
+    """
+    pattern = f"{data_type}_*.tif"
+    matching_files = [f for f in os.listdir(raster_dir) 
+                     if f.lower().startswith(data_type.lower()) and f.endswith('.tif')]
+    
+    if not matching_files:
+        return None
+    elif len(matching_files) > 1:
+        logger.warning(f"Multiple matching files found for {data_type}, using first match: {matching_files[0]}")
+    
+    return os.path.join(raster_dir, matching_files[0])
+
 def process_calibration_run(
     executable_dir: str,
     run_name: str,
@@ -255,42 +281,54 @@ def process_calibration_run(
     points_file, raster_file, centerline_file = setup_directories(executable_dir)
     
     # Load and process input data
-    calibration_points = load_calibration_points(points_file)
-    logger.info('Calibration points loaded successfully')
+    calibration_points, available_types = load_calibration_points(points_file)
+    logger.info(f'Available data types: {available_types}')
     
     centerline_gdf = load_centerline(centerline_file)
     logger.info('Centerline loaded successfully')
     
-    raster_data, geotransform, projection = process_raster(raster_file)
-    logger.info(f'Raster file processed successfully')
-    
-    # Generate output file paths
-    raster_name = os.path.splitext(os.path.basename(raster_file))[0]
-    plot_file, wse_plot_file, csv_file = out.get_output_paths(run_dir, raster_name)
-    
-    # Process the raster
-    logger.info(f"Processing raster: {raster_file}")
-    
-    # Sample raster values and calculate stationing
-    calibration_points = calc.sample_raster_at_points(
-        raster_data, geotransform, calibration_points,
-        x_col='E', y_col='N', wse='WSE'
-    )
-    calibration_points = calc.calculate_stationing(calibration_points, centerline_gdf)
-    
-    # Create visualizations and get statistics
-    rmse, avg_diff = out.create_calibration_plot(calibration_points, centerline_gdf, output_file=plot_file)
-    out.plot_wse_comparison(calibration_points, output_file=wse_plot_file)
-    
-    # Save results
-    if 'geometry' in calibration_points.columns:
-        calibration_points = calibration_points.drop(columns=['geometry'])
-    
-    calibration_points.to_csv(csv_file, index=False)
-    logger.info(f"Results saved to {csv_file}")
-    
-    # Update run log with statistics
-    out.update_run_log(executable_dir, run_name, description, rmse, avg_diff)
+    # Process each data type
+    for data_type in available_types:
+        logger.info(f"Processing {data_type} data...")
+        
+        # Find matching raster for this data type
+        raster_file = find_matching_raster(os.path.dirname(raster_file), data_type)
+        if not raster_file:
+            logger.warning(f"No raster found for {data_type}, skipping...")
+            continue
+        
+        # Process raster for this data type
+        raster_data, geotransform, projection = process_raster(raster_file)
+        logger.info(f'{data_type} raster file processed successfully')
+        
+        # Generate output file paths for this data type
+        raster_name = os.path.splitext(os.path.basename(raster_file))[0]
+        plot_file, comparison_plot_file, csv_file = out.get_output_paths(run_dir, raster_name, data_type)
+        
+        # Sample raster values and calculate stationing
+        calibration_points = calc.sample_raster_at_points(
+            raster_data, geotransform, calibration_points,
+            x_col='E', y_col='N', sample=data_type  # Use data_type instead of hardcoded 'WSE'
+        )
+        calibration_points = calc.calculate_stationing(calibration_points, centerline_gdf)
+        
+        # Create visualizations and get statistics
+        rmse, avg_diff = out.create_spatial_plot(
+            calibration_points, centerline_gdf, 
+            output_file=plot_file,
+            data_type=data_type
+        )
+        out.create_centerline_plot(calibration_points, output_file=comparison_plot_file, data_type=data_type)
+        
+        # Save results for this data type
+        if 'geometry' in calibration_points.columns:
+            calibration_points = calibration_points.drop(columns=['geometry'])
+        
+        calibration_points.to_csv(csv_file, index=False)
+        logger.info(f"{data_type} results saved to {csv_file}")
+        
+        # Update run log with statistics for this data type
+        out.update_run_log(executable_dir, run_name, description, rmse, avg_diff, data_type)
     
     # Validate output if in test mode
     if test_mode:
