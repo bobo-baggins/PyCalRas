@@ -14,7 +14,7 @@ def sample_raster_at_points(
     points_df: pd.DataFrame,
     x_col: str = 'X',
     y_col: str = 'Y',
-    z_col: str = 'Z',
+    wse: str = 'WSE',
     invalid_threshold: float = -9000,
     max_difference_ratio: float = 2.0
 ) -> pd.DataFrame:
@@ -27,7 +27,7 @@ def sample_raster_at_points(
         points_df: DataFrame containing point coordinates
         x_col: Name of the column containing X coordinates
         y_col: Name of the column containing Y coordinates
-        z_col: Name of the column containing Z values to compare against
+        wse: Name of the column containing WSE values to compare against
         invalid_threshold: Threshold for invalid raster values
         max_difference_ratio: Maximum allowed ratio between sampled and reference values
     
@@ -81,8 +81,8 @@ def sample_raster_at_points(
                 value = raster_data[closest[1], closest[0]]
             
             # Calculate difference and check if it's within acceptable range
-            difference = value - row[z_col]
-            if abs(difference) <= max_difference_ratio * abs(row[z_col]):
+            difference = value - row[wse]
+            if abs(difference) <= max_difference_ratio * abs(row[wse]):
                 sampled_values[idx] = value
                 differences[idx] = difference
                 valid_points += 1

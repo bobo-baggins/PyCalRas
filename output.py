@@ -318,7 +318,7 @@ def plot_wse_comparison(
         # Plot measured and model WSE
         ax.scatter(
             sampled_points_gdf['Stationing'],
-            sampled_points_gdf['Z'],
+            sampled_points_gdf['WSE'],
             color='blue',
             label='Surveyed WSE',
             marker='o',
@@ -337,7 +337,7 @@ def plot_wse_comparison(
         # Calculate and display statistics
         avg_diff = sampled_points_gdf['Difference'].abs().mean()
         rmse = np.sqrt(np.mean(sampled_points_gdf['Difference_Squared']))
-        p_value = sampled_points_gdf['Z'].corr(sampled_points_gdf['Sampled_Value'])
+        p_value = sampled_points_gdf['WSE'].corr(sampled_points_gdf['Sampled_Value'])
 
         ax.text(0.5, 1.10, f"Absolute Average Difference = {avg_diff:.3f}",
                 ha='center', va='bottom', fontsize=12, transform=ax.transAxes)

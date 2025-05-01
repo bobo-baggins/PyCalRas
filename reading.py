@@ -135,12 +135,19 @@ def setup_directories(executable_dir: str) -> Tuple[str, str, str]:
 def load_calibration_points(filepath: str) -> pd.DataFrame:
     """
     Load calibration points from CSV file.
+    Matches columns based on first letter:
+    P - Point Name
+    N - Northing
+    E - Easting
+    W - Water Surface Elevation (WSE)
+    D - Depth
+    V - Velocity
     
     Args:
         filepath: Path to the calibration points CSV file
         
     Returns:
-        pd.DataFrame: DataFrame containing calibration points
+        pd.DataFrame: DataFrame containing calibration points with standardized column names
         
     Raises:
         ValueError: If file is not CSV or missing required columns
@@ -153,12 +160,33 @@ def load_calibration_points(filepath: str) -> pd.DataFrame:
     if calibration_points.empty:
         raise ValueError("Calibration points file is empty")
     
-    # Validate required columns
-    required_columns = ['P', 'N', 'E', 'Z', 'D']
-    if not all(col in calibration_points.columns for col in required_columns):
-        raise ValueError(f"CSV file must contain columns: {required_columns}")
+    # Define column mapping based on first letter
+    column_mapping = {}
+    for col in calibration_points.columns:
+        first_letter = col[0].upper()
+        if first_letter in ['P', 'N', 'E']:
+            column_mapping[col] = first_letter
+        elif first_letter == 'W':
+            column_mapping[col] = 'WSE'
+        elif first_letter == 'D':
+            column_mapping[col] = 'Depth'
+        elif first_letter == 'V':
+            column_mapping[col] = 'Velocity'
     
-    calibration_points.columns = required_columns
+    # Verify we found the required columns
+    required_columns = ['N', 'E']  # These are always required
+    missing_columns = [col for col in required_columns if col not in column_mapping.values()]
+    if missing_columns:
+        raise ValueError(f"Could not find required columns: {missing_columns}")
+    
+    # Verify we have at least one data type column
+    data_type_columns = ['WSE', 'Depth', 'Velocity']
+    if not any(col in column_mapping.values() for col in data_type_columns):
+        raise ValueError("Could not find any data type columns (WSE, Depth, or Velocity)")
+    
+    # Rename columns
+    calibration_points = calibration_points.rename(columns=column_mapping)
+    
     return calibration_points
 
 def load_centerline(filepath: str) -> gpd.GeoDataFrame:
@@ -246,7 +274,7 @@ def process_calibration_run(
     # Sample raster values and calculate stationing
     calibration_points = calc.sample_raster_at_points(
         raster_data, geotransform, calibration_points,
-        x_col='E', y_col='N', z_col='Z'
+        x_col='E', y_col='N', wse='WSE'
     )
     calibration_points = calc.calculate_stationing(calibration_points, centerline_gdf)
     
