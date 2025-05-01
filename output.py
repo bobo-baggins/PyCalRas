@@ -320,7 +320,7 @@ def plot_wse_comparison(
             sampled_points_gdf['Stationing'],
             sampled_points_gdf['Z'],
             color='blue',
-            label='Surveyed Depth',
+            label='Surveyed WSE',
             marker='o',
             s=10
         )
