@@ -15,6 +15,7 @@ conda-env/
 *.swo
 
 # Project specific directories
+Inputs/
 Outputs/
 logs/
 
