@@ -40,21 +40,21 @@ def sample_raster_at_points(
         pixel_y = int((geo_y - geotransform[3]) / geotransform[5])
         return pixel_x, pixel_y
 
-    # def find_closest_valid_pixel(pixel_x: int, pixel_y: int) -> Optional[Tuple[int, int]]:
-    #     """Find the closest valid pixel using a more efficient search pattern."""
-    #     height, width = raster_data.shape
-    #     max_search = min(100, max(height, width) // 10)  # Limit search range
-    #     
-    #     # Create a spiral search pattern
-    #     for radius in range(1, max_search + 1):
-    #         for dx in range(-radius, radius + 1):
-    #             for dy in range(-radius, radius + 1):
-    #                 if abs(dx) == radius or abs(dy) == radius:  # Only check perimeter
-    #                     new_x, new_y = pixel_x + dx, pixel_y + dy
-    #                     if (0 <= new_x < width and 0 <= new_y < height and 
-    #                         raster_data[new_y, new_x] > invalid_threshold):
-    #                         return new_x, new_y
-    #     return None
+    def find_closest_valid_pixel(pixel_x: int, pixel_y: int) -> Optional[Tuple[int, int]]:
+        """Find the closest valid pixel using a more efficient search pattern."""
+        height, width = raster_data.shape
+        max_search = min(100, max(height, width) // 10)  # Limit search range
+        
+        # Create a spiral search pattern
+        for radius in range(1, max_search + 1):
+            for dx in range(-radius, radius + 1):
+                for dy in range(-radius, radius + 1):
+                    if abs(dx) == radius or abs(dy) == radius:  # Only check perimeter
+                        new_x, new_y = pixel_x + dx, pixel_y + dy
+                        if (0 <= new_x < width and 0 <= new_y < height and 
+                            raster_data[new_y, new_x] > invalid_threshold):
+                            return new_x, new_y
+        return None
 
     # Initialize result arrays and counters
     total_points = len(points_df)
@@ -73,9 +73,14 @@ def sample_raster_at_points(
                 
             value = raster_data[pixel_y, pixel_x]
             
-            # Handle invalid values - skip instead of searching for valid ones
+            # Handle invalid values by finding closest valid pixel
             if value <= invalid_threshold:
-                continue
+                closest_pixel = find_closest_valid_pixel(pixel_x, pixel_y)
+                if closest_pixel is not None:
+                    pixel_x, pixel_y = closest_pixel
+                    value = raster_data[pixel_y, pixel_x]
+                else:
+                    continue
             
             # Calculate difference and check if it's within acceptable range
             difference = value - row[sample]
