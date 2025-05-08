@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import geopandas as gpd
+import plotly
 
 # Local imports
 from logger_config import setup_logger
@@ -460,4 +461,320 @@ def create_centerline_plot(
 
     except Exception as e:
         logger.error(f"Error creating {data_type} comparison plot: {str(e)}")
+        raise
+
+def create_run_comparison_plot(
+    executable_dir: str,
+    output_file: str,
+    data_type: str = 'WSE',
+    show_plot: bool = False
+) -> None:
+    """
+    Create a comparison plot showing WSE data from all calibration runs.
+
+    Args:
+        executable_dir: Base directory for the application
+        output_file: Path to save the output PNG file
+        data_type: Type of data (default: WSE)
+        show_plot: Whether to display the plot (default: False)
+
+    Returns:
+        None
+    """
+    try:
+        # Create figure
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        # Get all run directories
+        outputs_dir = os.path.join(executable_dir, 'Outputs')
+        run_dirs = [d for d in os.listdir(outputs_dir) 
+                   if os.path.isdir(os.path.join(outputs_dir, d)) 
+                   and d != 'test']
+        
+        # Load calibration points (assuming they're in the first run's directory)
+        if run_dirs:
+            first_run_dir = os.path.join(outputs_dir, run_dirs[0])
+            cal_files = [f for f in os.listdir(first_run_dir) 
+                        if f.endswith(f'_{data_type}_results.csv')]
+            if cal_files:
+                cal_data = pd.read_csv(os.path.join(first_run_dir, cal_files[0]))
+                # Sort calibration data by stationing
+                cal_data = cal_data.sort_values('Stationing')
+                # Plot calibration data as dots
+                ax.scatter(
+                    cal_data['Stationing'],
+                    cal_data[data_type],
+                    color='black',
+                    label='Surveyed Data',
+                    s=20,
+                    alpha=1.0,
+                    edgecolor='none'
+                )
+        
+        # Plot each run's data as lines
+        colors = plt.cm.viridis(np.linspace(0, 1, len(run_dirs)))
+        for run_dir, color in zip(run_dirs, colors):
+            run_path = os.path.join(outputs_dir, run_dir)
+            # Find the results CSV for this run
+            result_files = [f for f in os.listdir(run_path) 
+                          if f.endswith(f'_{data_type}_results.csv')]
+            if result_files:
+                run_data = pd.read_csv(os.path.join(run_path, result_files[0]))
+                # Sort run data by stationing
+                run_data = run_data.sort_values('Stationing')
+                
+                # Calculate RMSE for this run
+                rmse = np.sqrt(np.mean(run_data['Difference_Squared']))
+                
+                # Plot model results as lines with RMSE in label
+                ax.plot(
+                    run_data['Stationing'],
+                    run_data['Sampled_Value'],
+                    color=color,
+                    label=f'Run: {run_dir} (RMSE: {rmse:.3f})',
+                    linewidth=2,
+                    alpha=0.75
+                )
+        
+        # Configure plot appearance
+        ax.set_title(f'{data_type} Comparison Across Runs')
+        ax.set_xlabel('Stationing (ft)')
+        ax.set_ylabel(f'{data_type} (ft)')
+        ax.grid(True, linestyle='--', alpha=0.7)
+        
+        # Format axis labels
+        ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: format(int(x), ',')))
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: format(int(x), ',')))
+        
+        # Add legend in lower right corner
+        ax.legend(bbox_to_anchor=(0.98, 0.02), loc='lower right')
+        
+        # Adjust layout to prevent label cutoff
+        plt.tight_layout()
+        
+        # Save plot
+        plt.savefig(output_file, dpi=300, bbox_inches='tight')
+        
+        # Show plot if requested
+        if show_plot:
+            plt.show()
+        else:
+            plt.close(fig)
+        
+        logger.info(f"Run comparison plot saved to {output_file}")
+        
+    except Exception as e:
+        logger.error(f"Error creating run comparison plot: {str(e)}")
+        raise
+
+def create_interactive_run_comparison_plot(
+    executable_dir: str,
+    output_file: str,
+    data_type: str = 'WSE'
+) -> None:
+    """
+    Create an interactive comparison plot showing WSE data from all calibration runs.
+    Saves as an HTML file that can be opened in any web browser.
+    Includes a download button for a CSV containing calibration data and run values.
+
+    Args:
+        executable_dir: Base directory for the application
+        output_file: Path to save the output HTML file
+        data_type: Type of data (default: WSE)
+
+    Returns:
+        None
+    """
+    try:
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+        import json
+        
+        # Get all run directories
+        outputs_dir = os.path.join(executable_dir, 'Outputs')
+        run_dirs = [d for d in os.listdir(outputs_dir) 
+                   if os.path.isdir(os.path.join(outputs_dir, d)) 
+                   and d != 'test']
+        
+        logger.info(f"Found run directories: {run_dirs}")
+        
+        # Create Plotly figure
+        fig = go.Figure()
+        
+        # Load calibration points (assuming they're in the first run's directory)
+        cal_data = None
+        if run_dirs:
+            first_run_dir = os.path.join(outputs_dir, run_dirs[0])
+            cal_files = [f for f in os.listdir(first_run_dir) 
+                        if f.endswith(f'_{data_type}_results.csv')]
+            
+            logger.info(f"Found calibration files: {cal_files}")
+            
+            if cal_files:
+                cal_data = pd.read_csv(os.path.join(first_run_dir, cal_files[0]))
+                # Sort calibration data by stationing
+                cal_data = cal_data.sort_values('Stationing')
+                
+                logger.info(f"Loaded calibration data with {len(cal_data)} points")
+                logger.info(f"Data range: {cal_data[data_type].min()} to {cal_data[data_type].max()}")
+                
+                # Add calibration data as scatter points
+                fig.add_trace(go.Scatter(
+                    x=cal_data['Stationing'].tolist(),
+                    y=cal_data[data_type].tolist(),
+                    mode='markers',
+                    name='Surveyed Data',
+                    marker=dict(
+                        color='black',
+                        size=8
+                    )
+                ))
+        
+        # Create a DataFrame for CSV export
+        if cal_data is not None:
+            # Start with calibration data
+            csv_data = cal_data[['Stationing', data_type]].copy()
+            csv_data.columns = ['Stationing', 'Calibration_Value']
+            
+            # Plot each run's data as lines and add to CSV
+            colors = plt.cm.viridis(np.linspace(0, 1, len(run_dirs)))
+            for run_dir, color in zip(run_dirs, colors):
+                run_path = os.path.join(outputs_dir, run_dir)
+                # Find the results CSV for this run
+                result_files = [f for f in os.listdir(run_path) 
+                              if f.endswith(f'_{data_type}_results.csv')]
+                
+                if result_files:
+                    run_data = pd.read_csv(os.path.join(run_path, result_files[0]))
+                    # Sort run data by stationing
+                    run_data = run_data.sort_values('Stationing')
+                    
+                    logger.info(f"Loaded run data for {run_dir} with {len(run_data)} points")
+                    logger.info(f"Data range: {run_data['Sampled_Value'].min()} to {run_data['Sampled_Value'].max()}")
+                    
+                    # Calculate RMSE for this run
+                    rmse = np.sqrt(np.mean(run_data['Difference_Squared']))
+                    
+                    # Add run data as line
+                    fig.add_trace(go.Scatter(
+                        x=run_data['Stationing'].tolist(),
+                        y=run_data['Sampled_Value'].tolist(),
+                        mode='lines',
+                        name=f'Run: {run_dir} (RMSE: {rmse:.3f})',
+                        line=dict(
+                            color=f'rgb({int(color[0]*255)},{int(color[1]*255)},{int(color[2]*255)})',
+                            width=2
+                        )
+                    ))
+                    
+                    # Add run data to CSV
+                    csv_data[f'Run_{run_dir}'] = run_data['Sampled_Value']
+        
+        # Check if we have any data to plot
+        if len(fig.data) == 0:
+            raise ValueError("No data found to plot")
+            
+        # Update layout with explicit ranges
+        fig.update_layout(
+            title=f'{data_type} Comparison Across Runs',
+            xaxis_title='Stationing (ft)',
+            yaxis_title=f'{data_type} (ft)',
+            showlegend=True,
+            legend=dict(
+                yanchor="bottom",
+                y=0.01,
+                xanchor="right",
+                x=0.99
+            ),
+            hovermode='x unified',
+            # Add explicit ranges based on data
+            xaxis=dict(
+                range=[cal_data['Stationing'].min(), cal_data['Stationing'].max()],
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='LightGray'
+            ),
+            yaxis=dict(
+                range=[min(cal_data[data_type].min(), run_data['Sampled_Value'].min()),
+                       max(cal_data[data_type].max(), run_data['Sampled_Value'].max())],
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='LightGray'
+            )
+        )
+        
+        # Create custom HTML template
+        template = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+            <style>
+                body {{ margin: 20px; }}
+                #plot {{ width: 100%; height: 600px; }}
+                button {{ 
+                    margin: 10px 0;
+                    padding: 10px 20px;
+                    font-size: 16px;
+                    cursor: pointer;
+                }}
+            </style>
+        </head>
+        <body>
+            <div id="plot"></div>
+            <button onclick="downloadCSV()">Download CSV</button>
+            <script>
+                // Initialize plot data
+                var plotData = {plot_data};
+                
+                // Debug information
+                console.log('Plot data:', plotData);
+                console.log('Number of traces:', plotData.data.length);
+                
+                // Create the plot
+                Plotly.newPlot('plot', plotData.data, plotData.layout, {{
+                    responsive: true,
+                    displayModeBar: true
+                }}).then(function() {{
+                    console.log('Plot created successfully');
+                }}).catch(function(err) {{
+                    console.error('Error creating plot:', err);
+                }});
+                
+                // CSV data for download
+                var csvData = `{csv_data}`;
+                
+                function downloadCSV() {{
+                    var blob = new Blob([csvData], {{ type: 'text/csv' }});
+                    var url = window.URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'calibration_data.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }}
+            </script>
+        </body>
+        </html>
+        """
+        
+        # Generate CSV without extra spaces
+        csv_string = csv_data.to_csv(index=False, lineterminator='\n')
+        
+        # Convert figure to JSON with proper encoding
+        plot_json = json.dumps(fig.to_dict(), cls=plotly.utils.PlotlyJSONEncoder)
+        
+        # Save the plot as HTML
+        with open(output_file, 'w') as f:
+            f.write(template.format(
+                plot_data=plot_json,
+                csv_data=csv_string
+            ))
+        
+        logger.info(f"Interactive plot saved to {output_file}")
+        
+    except Exception as e:
+        logger.error(f"Error creating interactive plot: {str(e)}")
         raise
